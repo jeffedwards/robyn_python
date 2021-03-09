@@ -15,7 +15,7 @@ To fill this out
 * jeffedwards@fb.com, Jeff Edwards, Marketing Science Partner
 * nuochen@fb.com, Nuo Chen, Marketing Science Partner
 * wshepherd@fb.com, Will Shepherd, Marketing Science Partner
-* 
+
 
 ## License
 
