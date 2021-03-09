@@ -18,8 +18,8 @@ To fill this out
 
 
 ## License
-
+<!--
 FB Robyn MMM R script is MIT licensed, as found in the LICENSE file.
-
+-->
 - Terms of Use - https://opensource.facebook.com/legal/terms 
 - Privacy Policy - https://opensource.facebook.com/legal/privacy
