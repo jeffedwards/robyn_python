@@ -43,13 +43,14 @@ library(rstudioapi)
 ## please see https://rstudio.github.io/reticulate/index.html for info on installing reticulate
 # conda_create("r-reticulate") # must run this line once
 # conda_install("r-reticulate", "nevergrad", pip=TRUE)  #  must install nevergrad in conda before running Robyn
+# use_python("/Users/gufengzhou/Library/r-miniconda/envs/r-reticulate/bin/python3.6") # in case nevergrad still can't be imported after installation, please locate your python file and run this line
 use_condaenv("r-reticulate") 
 
 ################################################################
 #### load data & scripts
 script_path <- str_sub(rstudioapi::getActiveDocumentContext()$path, start = 1, end = max(unlist(str_locate_all(rstudioapi::getActiveDocumentContext()$path, "/"))))
-dt_input <- fread(paste0(script_path,'de_simulated_data.csv')) # input time series should be daily, weekly or monthly
-dt_holidays <- fread(paste0(script_path,'holidays.csv')) # when using own holidays, please keep the header c("ds", "holiday", "country", "year")
+dt_input <- fread(paste0(script_path, '../../../../Downloads/Robyn-master/source/de_simulated_data.csv')) # input time series should be daily, weekly or monthly
+dt_holidays <- fread(paste0(script_path, '../../../../Downloads/Robyn-master/source/holidays.csv')) # when using own holidays, please keep the header c("ds", "holiday", "country", "year")
 
 source(paste(script_path, "fb_robyn.func.R", sep=""))
 source(paste(script_path, "fb_robyn.optm.R", sep=""))
