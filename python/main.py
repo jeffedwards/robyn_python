@@ -13,7 +13,9 @@ import multiprocessing
 from scipy.spatial.distance import mahalanobis
 import scipy as sp
 
-
+# DAVID comment: Structure for importing features needs to be determined
+from python import fb_robyn_func as f
+import python.setting as input
 
 # Uploading an Input file.
 # Specify the path where the input data file is located
@@ -23,9 +25,13 @@ df = pd.read_csv(path + "de_simulated_data.csv")
 df_Input = df.set_index('DATE')
 
 
+################################################################
+#### set model input variables
+
+
 # Loading Prophet in Python:
 set_country = 'DE'
-set_depVarName = df_Input['revenue']
+set_depVarName = ['revenue']
 
 # Turn on or off the Prophet feature
 activate_prophet = True
@@ -34,19 +40,27 @@ activate_prophet = True
 set_prophet  = ["trend", "season", "holiday"] #
 set_prophet_sign = ["default","default",'default']
 
-activate_baseline = True
+input.activate_baseline = True
+#activate_baseline = True
+
 # typically competitors, price & promotion, temperature,  unemployment rate etc
-set_baseVarName = df_Input["competitor_sales_B"]
+input.set_baseVarName = ["competitor_sales_B"]
 
 # c("default", "positive", and "negative"), control the signs of coefficients for baseline variables
 set_baseVarSign = ["negative"]
 
 # Setting Up Media Variables
-set_mediaVarName = df_Input[['tv_S','ooh_S','print_S','facebook_I','search_clicks_P']]
-set_mediaSpendName = df_Input[['tv_S','ooh_S','print_S','facebook_S','search_S']]
+set_mediaVarName = ['tv_S','ooh_S','print_S','facebook_I','search_clicks_P']
+set_mediaSpendName = ['tv_S','ooh_S','print_S','facebook_S','search_S']
 set_mediaVarSign = []
 
 set_factorVarName = ["positive","positive","positive","positive","positive"]
+
+
+
+################################################################
+#### set global model parameters
+
 
 # Calculate and set core for running Robyn:
 print("Total Cores Running on the machine:", (multiprocessing.cpu_count()))
@@ -59,6 +73,8 @@ adstock = "geometric" # geometric or weibull . weibull is more flexible, yet has
 set_iter = 100 # We recommend to run at least 50k iteration at the beginning, when hyperparameter bounds are not optimised
 
 
+
+f.plotTrainSize(True)
 set_modTrainSize = 0.74
 
 # selected algorithm for Nevergrad, the gradient-free optimisation library https://facebookresearch.github.io/nevergrad/index.html
