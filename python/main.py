@@ -22,8 +22,9 @@ import python.setting as input
 path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\"
 
 df = pd.read_csv(path + "de_simulated_data.csv")
-df_Input = df.set_index('DATE')
+input.df_Input = df.set_index('DATE')
 
+'depVar' not in input.df_Input.columns
 
 ################################################################
 #### set model input variables
@@ -31,7 +32,7 @@ df_Input = df.set_index('DATE')
 
 # Loading Prophet in Python:
 set_country = 'DE'
-set_depVarName = ['revenue']
+input.set_depVarName = ['revenue']
 
 # Turn on or off the Prophet feature
 activate_prophet = True
@@ -50,11 +51,11 @@ input.set_baseVarName = ["competitor_sales_B"]
 set_baseVarSign = ["negative"]
 
 # Setting Up Media Variables
-set_mediaVarName = ['tv_S','ooh_S','print_S','facebook_I','search_clicks_P']
-set_mediaSpendName = ['tv_S','ooh_S','print_S','facebook_S','search_S']
-set_mediaVarSign = []
+input.set_mediaVarName = ['tv_S','ooh_S','print_S','facebook_I','search_clicks_P']
+input.set_mediaSpendName = ['tv_S','ooh_S','print_S','facebook_S','search_S']
+set_mediaVarSign = ["positive","positive","positive","positive","positive"]
 
-set_factorVarName = ["positive","positive","positive","positive","positive"]
+input.set_factorVarName = []
 
 
 
