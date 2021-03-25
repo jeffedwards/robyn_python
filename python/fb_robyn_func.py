@@ -18,8 +18,7 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
     Define ridge lambda sequence function
     """
     def mysd(y):
-        mysd = math.sqrt(sum((y - sum(y) / len(y)) ** 2) / len(y))
-        return mysd
+        return math.sqrt(sum((y - sum(y) / len(y)) ** 2) / len(y))
 
     sx = x.apply(mysd)
     sx = preprocessing.scale(x).T
