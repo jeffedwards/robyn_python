@@ -98,6 +98,25 @@ def adstockWeibull(x, shape, scale):
 
     return x_decayed, thetaVecCum
 
+def getHyperNames(adstock, set_mediaVarName):
+    """
+    Parameters
+    ----------
+    adstock: chosen adstock (geometric or weibull)
+    set_mediaVarName: list of media channels
+    Returns
+    -------
+    crossed list of adstock parameters and media channels
+    """
+
+    if adstock == "geometric":
+        global_name = ["thetas", "alphas", "gammas"]
+        local_name = sorted(list([i+"_"+str(j) for i in set_mediaVarName for j in global_name]))
+    elif adstock == "weibull":
+        global_name = ["shapes", "scales", "alphas", "gammas"]
+        local_name = sorted(list([i+"_"+str(j) for i in set_mediaVarName for j in global_name]))
+
+    return local_name
 
 
 
