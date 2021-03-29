@@ -98,7 +98,8 @@ def adstockWeibull(x, shape, scale):
 
     return x_decayed, thetaVecCum
 
-def getHyperNames(adstock, set_mediaVarName):
+
+def gethypernames(adstock, set_mediaVarName):
     """
     Parameters
     ----------
