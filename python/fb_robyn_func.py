@@ -120,4 +120,40 @@ def gethypernames(adstock, set_mediaVarName):
     return local_name
 
 
+def check_conditions(dt_transform):
+    """
+    check all conditions 1 by 1; terminate and raise errors if conditions are not met
+    :param dt_transformations:
+    :return:
+    """
+    try:
+        set_mediaVarName
+    except NameError:
+        print('set_mediaVarName must be specified')
 
+    if activate_prophet and set_prophet not in ['trend', 'season', 'weekday', 'holiday']:
+        raise ValueError('set_prophet must be "trend", "season", "weekday" or "holiday"')
+    elif activate_baseline:
+        if len(set_baseVarName) != len(set_baseVarSign):
+            raise ValueError('set_baseVarName and set_baseVarSign have to be the same length')
+    elif len(set_mediaVarName) != len(set_mediaVarSign):
+        raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
+    elif not all(x in ["positive", "negative", "default"]
+                 for x in ['set_prophetVarSign', 'set_baseVarSign', 'set_mediaVarSign']):
+        raise ValueError('set_prophetVarSign, '
+                         'set_baseVarSign & set_mediaVarSign must be "positive", "negative" or "default"')
+    elif activate_calibration:
+        if set_lift.shape[0] == 0:
+            raise ValueError('please provide lift result or set activate_calibration = FALSE')
+        elif:
+            pass
+        elif set_iter < 500 or set_trial < 80:
+            raise ValueError('you are calibrating MMM. we recommend to run at least 500 iterations '
+                             'per trial and at least 80 trials at the beginning')
+
+    elif adstock not in ['geometric', 'weibull']:
+        raise ValueError('adstock must be "geometric" or "weibull"')
+    elif dt_transform.isna().any(axis = None):
+        raise ValueError('input data includes NaN')
+    elif dt_transform.isinf().any(axis = None):
+        raise ValueError('input data includes Inf')
