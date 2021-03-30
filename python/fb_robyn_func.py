@@ -4,6 +4,9 @@ import numpy as np
 #import weibull as weibull
 from sklearn import preprocessing
 from scipy import stats
+import matplotlib.pyplot as plt
+
+import python.setting as input
 
 
 def rsq(true,predicted):
@@ -120,4 +123,57 @@ def gethypernames(adstock, set_mediaVarName):
     return local_name
 
 
+def plotTrainSize(plotTrainSize):
 
+    """
+    Plot Bhattacharyya coef. of train/test split
+    ----------
+    Parameters
+    ----------
+    True: Return the Bhattacharyya coef plot
+    Fales: Do nothing
+    ----------
+    """
+
+    if plotTrainSize:
+        if (input.activate_baseline) and (input.set_baseVarName):
+            bhattaVar = list(set(input.set_baseVarName + input.set_depVarName + input.set_mediaVarName + input.set_mediaSpendName))
+        else:
+            exit("either set activate_baseline = F or fill set_baseVarName")
+        bhattaVar = list(set(bhattaVar) - set(input.set_factorVarName))
+        if 'depVar' not in input.df_Input.columns:
+            dt_bhatta = input.df_Input[bhattaVar]
+        else:
+            bhattaVar = ['depVar' if i == input.set_depVarName[0] else i for i in bhattaVar]
+            dt_bhatta = input.df_Input[bhattaVar]
+
+        ## define bhattacharyya distance function
+        def f_bhattaCoef(mu1, mu2, Sigma1, Sigma2):
+
+            from scipy.spatial import distance
+
+            Sig = (Sigma1 + Sigma2) / 2
+            ldet_s = np.linalg.slogdet(Sig)[1]
+            ldet_s1 = np.linalg.slogdet(Sigma1)[1]
+            ldet_s2 = np.linalg.slogdet(Sigma2)[1]
+            d1 = distance.mahalanobis(mu1, mu2, np.linalg.inv(Sig)) / 8
+            d2 = 0.5 * ldet_s - 0.25 * ldet_s1 - 0.25 * ldet_s2
+            d = d1 + d2
+            bhatta_coef = 1 / np.exp(d)
+
+            return bhatta_coef
+
+        ## loop all train sizes
+        bcCollect = []
+        sizeVec = np.linspace(0.5, 0.9, 41)
+
+        for size in sizeVec:
+            test1 = dt_bhatta[0:(math.floor(len(dt_bhatta) * size))]
+            test2 = dt_bhatta[(math.floor(len(dt_bhatta) * size)):]
+            bcCollect.append(f_bhattaCoef(test1.mean(), test2.mean(), test1.cov(), test2.cov()))
+
+        plt.plot(sizeVec, bcCollect)
+        plt.xlabel("train_size")
+        plt.ylabel("bhatta_coef")
+        plt.title("Bhattacharyya coef. of train/test split \n- Select the training size with larger bhatta_coef", loc='left')
+        plt.show()
