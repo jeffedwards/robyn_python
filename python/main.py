@@ -23,10 +23,10 @@ import python.setting as input
 # Uploading an Input file.
 # Specify the path where the input data file is located
 path = "C:\\Users\\anuragjoshi\Documents\\01 Projects\\04 MMM\Robyn-master2.0\\source\\"
-# path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\" #delete later. Tmp line for debugging (David)
+#path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\" #delete later. Tmp line for debugging (David)
 
 df = pd.read_csv(path + "de_simulated_data.csv")
-df_Input = df.set_index('DATE')
+input.df_Input = df.set_index('DATE')
 
 
 ################################################################
