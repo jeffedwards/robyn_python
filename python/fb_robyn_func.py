@@ -158,7 +158,7 @@ def check_conditions(dt_transform):
     elif dt_transform.isinf().any(axis = None):
         raise ValueError('input data includes Inf')
 
-    return pass
+    pass
 
 def inputWrangling(dt_transform=dt_input):
 
@@ -172,7 +172,34 @@ def inputWrangling(dt_transform=dt_input):
     except ValueError:
         print('input date variable should have format "2020-01-01"')
 
-    # check variable existence
+    # check variable existence (need to check how the global variables work here)
+    if not active_prophet:
+        pass
+
+    try:
+        'set_mediaSpendName'
+    except NameError:
+        print('set_mediaSpendName must be specified')
+    if len(set_mediaVarName) != len(set_mediaSpendName):
+        raise ValueError('set_mediaSpendName and set_mediaVarName have to be the same length and same order')
+
+    trainSize = round(dt_transform.shape[0] * set_modTrainSize)
+    dt_train = dt_transform[:trainSize+1, set_mediaVarName]
+    if 0 in dt_train.sum(axis=1).values:
+        raise ValueError('These media channels contains only 0 within training period')
+
+    dayInterval =
+    if dayInterval == 1:
+        intervalType = 'day'
+    elif dayInterval == 7:
+        intervalType = 'week'
+    elif dayInterval in range(28,32):
+        intervalType = 'month'
+    else:
+        raise ValueError('input data has to be daily, weekly or monthly')
+    mediaVarCount = len(set_mediaVarName)
 
 
+
+    check_conditions(dt_transform)
     return dt_transform
