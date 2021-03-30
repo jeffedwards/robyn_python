@@ -157,3 +157,22 @@ def check_conditions(dt_transform):
         raise ValueError('input data includes NaN')
     elif dt_transform.isinf().any(axis = None):
         raise ValueError('input data includes Inf')
+
+    return pass
+
+def inputWrangling(dt_transform=dt_input):
+
+    dt_transform = dt_transform.copy()
+    ## here we need to use a "global" variable set_dateVarName
+
+
+    # check date format
+    try:
+        pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
+    except ValueError:
+        print('input date variable should have format "2020-01-01"')
+
+    # check variable existence
+
+
+    return dt_transform
