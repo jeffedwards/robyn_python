@@ -11,7 +11,14 @@ import python.setting as input
 
 def rsq(true,predicted):
     """
-    Define r-squared function
+    ----------
+    Parameters
+    ----------
+    true: true value
+    predicted: predicted value
+    Returns
+    -------
+    r-squared
     """
     sse = sum((predicted - true) ** 2)
     sst = sum((true - sum(true)/len(true)) ** 2)
@@ -20,7 +27,14 @@ def rsq(true,predicted):
 
 def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
     """
-    Define ridge lambda sequence function
+    ----------
+    Parameters
+    ----------
+    x: matrix
+    y: vector
+    Returns
+    -------
+    lambda sequence
     """
     def mysd(y):
         return math.sqrt(sum((y - sum(y) / len(y)) ** 2) / len(y))
@@ -177,3 +191,65 @@ def plotTrainSize(plotTrainSize):
         plt.ylabel("bhatta_coef")
         plt.title("Bhattacharyya coef. of train/test split \n- Select the training size with larger bhatta_coef", loc='left')
         plt.show()
+
+
+def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, gamma=None, stage=3):
+    """
+    ----------
+    Parameters
+    ----------
+    x: vector
+    adstock: chosen adstock (geometric or weibull)
+    theta: decay coefficient
+    shape: shape parameter for weibull
+    scale: scale parameter for weibull
+    alpha: hill function parameter
+    gamma: hill function parameter
+    Returns
+    -------
+    s-curve transformed vector
+    """
+
+    ## step 1: add decay rate
+    if adstock == "geometric":
+        x_decayed = adstockGeometric(x, theta)
+
+        if stage == "thetaVecCum":
+            thetaVecCum = theta
+        for t in range(1, len(x) - 1):
+            thetaVecCum[t] = thetaVecCum[t - 1] * theta
+        # thetaVecCum.plot()
+
+    elif adstock == "weibull":
+        x_list = adstockWeibull(x, shape, scale)
+        x_decayed = x_list['x_decayed']
+        # x_decayed.plot()
+
+        if stage == "thetaVecCum":
+            thetaVecCum = x_list['thetaVecCum']
+        # thetaVecCum.plot()
+
+    else:
+        print("alternative must be geometric or weibull")
+
+    ## step 2: normalize decayed independent variable # deprecated
+    # x_normalized = x_decayed
+
+    ## step 3: s-curve transformation
+    gammaTrans = round(np.quantile(np.linspace(min(x_normalized), max(normalized), 100), gamma), 4)
+    x_scurve = x_normalized ** alpha / (x_normalized ** alpha + gammaTrans ** alpha)
+    # x_scurve.plot()
+    if stage in [1, 2]:
+        x_out = x_decayed
+    # elif stage == 2:
+    # x_out = x_normalized
+    elif stage == 3:
+        x_out = x_scurve
+    elif stage == "thetaVecCum":
+        x_out = thetaVecCum
+    else:
+        raise ValueError(
+            "hyperparameters out of range. theta range: 0-1 (excl.1), shape range: 0-5 (excl.0), alpha range: 0-5 (excl.0),  gamma range: 0-1 (excl.0)")
+
+    return x_out
+
