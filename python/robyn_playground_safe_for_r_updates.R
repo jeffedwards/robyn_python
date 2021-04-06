@@ -4,19 +4,27 @@
 
 ########################################################################################################################
 # LOAD PACKAGES
-library(glmnet)
-library(reticulate)
-require(stringr)
-require(data.table)
-require(minpack.lm)
-require(ggplot2)
-require(ggpubr)
-require(gridExtra)
-require(prophet)
-require(doParallel)
-require(rPref)
-require(gridExtra)
 
+library(car)
+library(data.table)
+library(doParallel)
+library(foreach)
+library(ggplot2)
+library(ggpubr)
+library(glmnet)
+library(grid)
+library(gridExtra)
+library(lubridate)
+library(minpack.lm)
+library(nloptr)
+library(PerformanceAnalytics)
+library(prophet)
+library(reticulate)
+library(rPref)
+library(rstudioapi)
+library(see)
+library(StanHeaders)
+library(stringr)
 
 
 ########################################################################################################################
@@ -82,10 +90,11 @@ set_modTrainSize <- 0.74
 # MODEL CORE FEATURES
 adstock <- "geometric"
 set_iter <- 500
-# set_iter <- 20 # Monkey
+set_iter <- 20 # Monkey
 set_hyperOptimAlgo <- "DiscreteOnePlusOne"
 set_trial <- 40
-# set_trial <- 2 # Monkey
+set_trial <- 2 # Monkey
+
 
 
 # HYPERPARAMETER BOUNDS
