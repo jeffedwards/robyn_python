@@ -14,94 +14,51 @@ import multiprocessing
 from scipy.spatial.distance import mahalanobis
 import scipy as sp
 
-# Import functions and global parameters
+# Import functions
 from python import fb_robyn_func as f
-import python.setting as input
-
-# Create dictionary
-d = {
-    "df_Input": None,
-    "set_country": None,
-    "set_depVarName": None,
-    "activate_prophet": None,
-    "set_prophet": None,
-    "set_prophet_sign": None,
-    "activate_baseline": None,
-    "set_baseVarName": None,
-    "set_baseVarSign": None,
-    "set_mediaVarName": None,
-    "set_mediaSpendName": None,
-    "set_mediaVarSign": None,
-    "set_factorVarName": None,
-    "set_cores": None,
-    "adstock": None,
-    "set_iter": None,
-    "set_modTrainSize": None,
-    "set_hyperOptimAlgo": None,
-    "set_trial": None
-}
 
 # Uploading an Input file.
 # Specify the path where the input data file is located
 path = "C:\\Users\\anuragjoshi\Documents\\01 Projects\\04 MMM\Robyn-master2.0\\source\\"
 #path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\" #delete later. Tmp line for debugging (David)
 
-df = pd.read_csv(path + "de_simulated_data.csv")
-input.df_Input = df.set_index('DATE')
+df = pd.read_csv(path + "de_simulated_data.csv").set_index('DATE')
 
+# Create dictionary to initiate parameters
+d = {
+    # set model input variables
+    "df_Input": df,
+    "set_country": 'DE',  # only one country allowed once. Including national holidays for 59 countries, whose list can be found on our github guide
+    "set_dateVarName": ['DATE'],  # date format must be "2020-01-01"
+    "set_depVarName": ['revenue'],  # there should be only one dependent variable
+    "activate_prophet": True,  # Turn on or off the Prophet feature
+    "set_prophet": ["trend", "season", "holiday"],  # "trend","season", "weekday", "holiday" are provided and case-sensitive. Recommend at least keeping Trend & Holidays
+    "set_prophet_sign": ["default", "default", "default"],  # c("default", "positive", and "negative"). Recommend as default. Must be same length as set_prophet
+    "activate_baseline": True,
+    "set_baseVarName": ['competitor_sales_B'],  # typically competitors, price & promotion, temperature, unemployment rate etc
+    "set_baseVarSign": ['negative'],  # c("default", "positive", and "negative"), control the signs of coefficients for baseline variables
+    "set_mediaVarName": ["tv_S", "ooh_S", "print_S", "facebook_I", "search_clicks_P"],  # we recommend to use media exposure metrics like impressions, GRP etc for the model. If not applicable, use spend instead
+    "set_mediaSpendName": ["tv_S", "ooh_S",	"print_S", "facebook_S", "search_S"],
+    "set_mediaVarSign": ["positive", "positive", "positive", "positive", "positive"],
+    "set_factorVarName": [], # please specify which variable above should be factor, otherwise leave empty
 
-################################################################
-#### set model input variables
-
-# Loading Prophet in Python:
-input.set_country = 'DE'
-input.set_depVarName = ['revenue']
-
-# Turn on or off the Prophet feature
-input.activate_prophet = True
-
-# "trend","season", "weekday", "holiday" are provided and case-sensitive. Recommended to at least keep Trend & Holidays
-input.set_prophet  = ["trend", "season", "holiday"]
-input.set_prophet_sign = ["default","default",'default']
-
-input.activate_baseline = True
-
-# typically competitors, price & promotion, temperature,  unemployment rate etc
-input.set_baseVarName = ["competitor_sales_B"]
-
-# c("default", "positive", and "negative"), control the signs of coefficients for baseline variables
-input.set_baseVarSign = ["negative"]
-
-# Setting Up Media Variables
-input.set_mediaVarName = ['tv_S','ooh_S','print_S','facebook_I','search_clicks_P']
-input.set_mediaSpendName = ['tv_S','ooh_S','print_S','facebook_S','search_S']
-input.set_mediaVarSign = ["positive","positive","positive","positive","positive"]
-
-input.set_factorVarName = []
-
-
-################################################################
-#### set global model parameters
-
+    # set global model parameters
+    "set_cores": 6,  # User needs to set these cores depending upon the cores in local machine
+    "adstock": "geometric",  # geometric or weibull. weibull is more flexible, yet has one more parameter and thus takes longer
+    "set_iter": 500,  # number of allowed iterations per trial. 500 is recommended
+    "set_modTrainSize": 0.74,  # 0.74 means taking 74% of data to train and 30% to test the model.
+    "set_hyperOptimAlgo": "DiscreteOnePlusOne",  # selected algorithm for Nevergrad, the gradient-free optimisation library https://facebookresearch.github.io/nevergrad/index.html
+    "set_trial": 40, # number of allowed iterations per trial. 40 is recommended without calibration, 100 with calibration.
+    ## Time estimation: with geometric adstock, 500 iterations * 40 trials and 6 cores, it takes less than 1 hour. Weibull takes at least twice as much time.
+}
 
 # Calculate and set core for running Robyn:
 print("Total Cores Running on the machine:", (multiprocessing.cpu_count()))
 
-# User needs to set these cores depending upon the cores in local machine
-input.set_cores = 6
-
-## set model core features
-input.adstock = "geometric" # geometric or weibull . weibull is more flexible, yet has one more parameter and thus takes longer
-input.set_iter = 100 # We recommend to run at least 50k iteration at the beginning, when hyperparameter bounds are not optimised
 
 f.plotTrainSize(True)
-input.set_modTrainSize = 0.74
-
-# selected algorithm for Nevergrad, the gradient-free optimisation library https://facebookresearch.github.io/nevergrad/index.html
-input.set_hyperOptimAlgo = "DiscreteOnePlusOne"
 
 
-# number of allowed iterations per trial. 40 is recommended without calibration, 100 with calibration.
-## Time estimation: with geometric adstock, 500 iterations * 40 trials and 6 cores
-input.set_trial = 3
+
+
 
