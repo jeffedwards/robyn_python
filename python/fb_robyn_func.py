@@ -4,11 +4,21 @@ import numpy as np
 #import weibull as weibull
 from sklearn import preprocessing
 from scipy import stats
+import matplotlib.pyplot as plt
+
+import python.setting as input
 
 
 def rsq(true,predicted):
     """
-    Define r-squared function
+    ----------
+    Parameters
+    ----------
+    true: true value
+    predicted: predicted value
+    Returns
+    -------
+    r-squared
     """
     sse = sum((predicted - true) ** 2)
     sst = sum((true - sum(true)/len(true)) ** 2)
@@ -17,7 +27,14 @@ def rsq(true,predicted):
 
 def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
     """
-    Define ridge lambda sequence function
+    ----------
+    Parameters
+    ----------
+    x: matrix
+    y: vector
+    Returns
+    -------
+    lambda sequence
     """
     def mysd(y):
         return math.sqrt(sum((y - sum(y) / len(y)) ** 2) / len(y))
@@ -120,86 +137,119 @@ def gethypernames(adstock, set_mediaVarName):
     return local_name
 
 
-def check_conditions(dt_transform):
+def plotTrainSize(plotTrainSize):
+
     """
-    check all conditions 1 by 1; terminate and raise errors if conditions are not met
-    :param dt_transformations:
-    :return:
+    Plot Bhattacharyya coef. of train/test split
+    ----------
+    Parameters
+    ----------
+    True: Return the Bhattacharyya coef plot
+    Fales: Do nothing
+    ----------
     """
-    try:
-        set_mediaVarName
-    except NameError:
-        print('set_mediaVarName must be specified')
 
-    if activate_prophet and set_prophet not in ['trend', 'season', 'weekday', 'holiday']:
-        raise ValueError('set_prophet must be "trend", "season", "weekday" or "holiday"')
-    elif activate_baseline:
-        if len(set_baseVarName) != len(set_baseVarSign):
-            raise ValueError('set_baseVarName and set_baseVarSign have to be the same length')
-    elif len(set_mediaVarName) != len(set_mediaVarSign):
-        raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
-    elif not all(x in ["positive", "negative", "default"]
-                 for x in ['set_prophetVarSign', 'set_baseVarSign', 'set_mediaVarSign']):
-        raise ValueError('set_prophetVarSign, '
-                         'set_baseVarSign & set_mediaVarSign must be "positive", "negative" or "default"')
-    elif activate_calibration:
-        if set_lift.shape[0] == 0:
-            raise ValueError('please provide lift result or set activate_calibration = FALSE')
-        elif:
-            pass
-        elif set_iter < 500 or set_trial < 80:
-            raise ValueError('you are calibrating MMM. we recommend to run at least 500 iterations '
-                             'per trial and at least 80 trials at the beginning')
+    if plotTrainSize:
+        if (input.activate_baseline) and (input.set_baseVarName):
+            bhattaVar = list(set(input.set_baseVarName + input.set_depVarName + input.set_mediaVarName + input.set_mediaSpendName))
+        else:
+            exit("either set activate_baseline = F or fill set_baseVarName")
+        bhattaVar = list(set(bhattaVar) - set(input.set_factorVarName))
+        if 'depVar' not in input.df_Input.columns:
+            dt_bhatta = input.df_Input[bhattaVar]
+        else:
+            bhattaVar = ['depVar' if i == input.set_depVarName[0] else i for i in bhattaVar]
+            dt_bhatta = input.df_Input[bhattaVar]
 
-    elif adstock not in ['geometric', 'weibull']:
-        raise ValueError('adstock must be "geometric" or "weibull"')
-    elif dt_transform.isna().any(axis = None):
-        raise ValueError('input data includes NaN')
-    elif dt_transform.isinf().any(axis = None):
-        raise ValueError('input data includes Inf')
+        ## define bhattacharyya distance function
+        def f_bhattaCoef(mu1, mu2, Sigma1, Sigma2):
 
-    pass
+            from scipy.spatial import distance
 
-def inputWrangling(dt_transform=dt_input):
+            Sig = (Sigma1 + Sigma2) / 2
+            ldet_s = np.linalg.slogdet(Sig)[1]
+            ldet_s1 = np.linalg.slogdet(Sigma1)[1]
+            ldet_s2 = np.linalg.slogdet(Sigma2)[1]
+            d1 = distance.mahalanobis(mu1, mu2, np.linalg.inv(Sig)) / 8
+            d2 = 0.5 * ldet_s - 0.25 * ldet_s1 - 0.25 * ldet_s2
+            d = d1 + d2
+            bhatta_coef = 1 / np.exp(d)
 
-    dt_transform = dt_transform.copy()
-    ## here we need to use a "global" variable set_dateVarName
+            return bhatta_coef
+
+        ## loop all train sizes
+        bcCollect = []
+        sizeVec = np.linspace(0.5, 0.9, 41)
+
+        for size in sizeVec:
+            test1 = dt_bhatta[0:(math.floor(len(dt_bhatta) * size))]
+            test2 = dt_bhatta[(math.floor(len(dt_bhatta) * size)):]
+            bcCollect.append(f_bhattaCoef(test1.mean(), test2.mean(), test1.cov(), test2.cov()))
+
+        plt.plot(sizeVec, bcCollect)
+        plt.xlabel("train_size")
+        plt.ylabel("bhatta_coef")
+        plt.title("Bhattacharyya coef. of train/test split \n- Select the training size with larger bhatta_coef", loc='left')
+        plt.show()
 
 
-    # check date format
-    try:
-        pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
-    except ValueError:
-        print('input date variable should have format "2020-01-01"')
+def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, gamma=None, stage=3):
+    """
+    ----------
+    Parameters
+    ----------
+    x: vector
+    adstock: chosen adstock (geometric or weibull)
+    theta: decay coefficient
+    shape: shape parameter for weibull
+    scale: scale parameter for weibull
+    alpha: hill function parameter
+    gamma: hill function parameter
+    Returns
+    -------
+    s-curve transformed vector
+    """
 
-    # check variable existence (need to check how the global variables work here)
-    if not active_prophet:
-        pass
+    ## step 1: add decay rate
+    if adstock == "geometric":
+        x_decayed = adstockGeometric(x, theta)
 
-    try:
-        'set_mediaSpendName'
-    except NameError:
-        print('set_mediaSpendName must be specified')
-    if len(set_mediaVarName) != len(set_mediaSpendName):
-        raise ValueError('set_mediaSpendName and set_mediaVarName have to be the same length and same order')
+        if stage == "thetaVecCum":
+            thetaVecCum = theta
+        for t in range(1, len(x) - 1):
+            thetaVecCum[t] = thetaVecCum[t - 1] * theta
+        # thetaVecCum.plot()
 
-    trainSize = round(dt_transform.shape[0] * set_modTrainSize)
-    dt_train = dt_transform[:trainSize+1, set_mediaVarName]
-    if 0 in dt_train.sum(axis=1).values:
-        raise ValueError('These media channels contains only 0 within training period')
+    elif adstock == "weibull":
+        x_list = adstockWeibull(x, shape, scale)
+        x_decayed = x_list['x_decayed']
+        # x_decayed.plot()
 
-    dayInterval =
-    if dayInterval == 1:
-        intervalType = 'day'
-    elif dayInterval == 7:
-        intervalType = 'week'
-    elif dayInterval in range(28,32):
-        intervalType = 'month'
+        if stage == "thetaVecCum":
+            thetaVecCum = x_list['thetaVecCum']
+        # thetaVecCum.plot()
+
     else:
-        raise ValueError('input data has to be daily, weekly or monthly')
-    mediaVarCount = len(set_mediaVarName)
+        print("alternative must be geometric or weibull")
 
+    ## step 2: normalize decayed independent variable # deprecated
+    # x_normalized = x_decayed
 
+    ## step 3: s-curve transformation
+    gammaTrans = round(np.quantile(np.linspace(min(x_normalized), max(normalized), 100), gamma), 4)
+    x_scurve = x_normalized ** alpha / (x_normalized ** alpha + gammaTrans ** alpha)
+    # x_scurve.plot()
+    if stage in [1, 2]:
+        x_out = x_decayed
+    # elif stage == 2:
+    # x_out = x_normalized
+    elif stage == 3:
+        x_out = x_scurve
+    elif stage == "thetaVecCum":
+        x_out = thetaVecCum
+    else:
+        raise ValueError(
+            "hyperparameters out of range. theta range: 0-1 (excl.1), shape range: 0-5 (excl.0), alpha range: 0-5 (excl.0),  gamma range: 0-1 (excl.0)")
 
-    check_conditions(dt_transform)
-    return dt_transform
+    return x_out
+
