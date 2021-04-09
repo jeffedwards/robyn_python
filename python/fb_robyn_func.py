@@ -253,7 +253,7 @@ def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, g
 
     return x_out
 
-def check_conditions(dt_transform, d):
+def check_conditions(dt_transform, d, set_lift):
     """
     check all conditions 1 by 1; terminate and raise errors if conditions are not met
     :param dt_transformations:
@@ -273,23 +273,35 @@ def check_conditions(dt_transform, d):
     if len(d['set_mediaVarName']) != len(d['set_mediaVarSign']):
         raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
     if not all(x in ["positive", "negative", "default"]
-                 for x in [d['set_prophetVarSign'], d['set_baseVarSign'], d['set_mediaVarSign']]):
+               for x in [d['set_prophetVarSign'], d['set_baseVarSign'], d['set_mediaVarSign']]):
         raise ValueError('set_prophetVarSign, '
                          'set_baseVarSign & set_mediaVarSign must be "positive", "negative" or "default"')
     if d['activate_calibration']:
+        try:
+            d['set_lift']
+        except NameError:
+            print('please provide lift result or set activate_calibration = FALSE')
+
         if d['set_lift'].shape[0] == 0:
             raise ValueError('please provide lift result or set activate_calibration = FALSE')
-        elif:
-            pass
-        elif d['set_iter'] < 500 or d['set_trial'] < 80:
+        if (min(set_lift['liftStartDate']) < min(dt_transform['ds'])
+                or (max(set_lift['liftEndDate']) > max(dt_transform['ds']) + dayInterval - 1)):
+            raise ValueError('we recommend you to only use lift results conducted within your MMM input data date range')
+
+        if d['set_iter'] < 500 or d['set_trial'] < 80:
             raise ValueError('you are calibrating MMM. we recommend to run at least 500 iterations '
                              'per trial and at least 80 trials at the beginning')
 
-    elif d['adstock'] not in ['geometric', 'weibull']:
+    if d['adstock'] not in ['geometric', 'weibull']:
         raise ValueError('adstock must be "geometric" or "weibull"')
-    elif dt_transform.isna().any(axis = None):
+    if d['adstock'] == 'geometric':
+        num_hp_channel = 3
+    else:
+        num_hp_channel = 4
+    # need to add: check hyperparameter names
+    if dt_transform.isna().any(axis = None):
         raise ValueError('input data includes NaN')
-    elif dt_transform.isinf().any(axis = None):
+    if dt_transform.isinf().any(axis = None):
         raise ValueError('input data includes Inf')
 
     return d
