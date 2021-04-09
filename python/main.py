@@ -50,7 +50,18 @@ d = {
     "set_hyperOptimAlgo": "DiscreteOnePlusOne",  # selected algorithm for Nevergrad, the gradient-free optimisation library https://facebookresearch.github.io/nevergrad/index.html
     "set_trial": 40, # number of allowed iterations per trial. 40 is recommended without calibration, 100 with calibration.
     ## Time estimation: with geometric adstock, 500 iterations * 40 trials and 6 cores, it takes less than 1 hour. Weibull takes at least twice as much time.
+
+    # define ground truth (e.g. Geo test, FB Lift test, MTA etc.)
+    "activate_calibration": False,
 }
+
+# lift calibration table
+set_lift = pd.DataFrame({'channel': ["facebook_I",  "tv_S", "facebook_I"],
+                         'liftStartDate': ["2018-05-01", "2017-11-27", "2018-07-01"],
+                         'liftEndDate': ["2018-06-10", "2017-12-03", "2018-07-20"],
+                         'liftAbs': [400000, 300000, 200000]})
+set_lift['liftStartDate'] = pd.to_datetime(set_lift['liftStartDate'], format='%Y-%m-%d')
+set_lift['liftEndDate'] = pd.to_datetime(set_lift['liftStartDate'], format='%Y-%m-%d')
 
 # Calculate and set core for running Robyn:
 print("Total Cores Running on the machine:", (multiprocessing.cpu_count()))
