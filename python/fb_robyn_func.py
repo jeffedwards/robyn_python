@@ -7,6 +7,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 import python.setting as input
+from prophet import Prophet
 
 
 def rsq(true,predicted):
@@ -253,7 +254,7 @@ def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, g
 
     return x_out
 
-def check_conditions(dt_transform, d, set_lift):
+def checkConditions(dt_transform, d, set_lift):
     """
     check all conditions 1 by 1; terminate and raise errors if conditions are not met
     :param dt_transformations:
@@ -305,3 +306,109 @@ def check_conditions(dt_transform, d, set_lift):
         raise ValueError('input data includes Inf')
 
     return d
+
+def inputWrangling(dt, dt_holiday, d):
+
+    dt_transform = dt.copy().reset_index()
+    dt_transform = dt_transform.rename({d['set_dateVarName']:'ds'}, axis=1)
+    dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
+    dt_transform = dt_transform.rename({d['set_depVarName']: 'depVar'}, axis=1)
+
+    # check date format
+    try:
+        pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
+    except ValueError:
+        print('input date variable should have format "yyyy-mm-dd"')
+
+
+    # check variable existence
+    if not d['activate_prophet']:
+        d['set_prophet'] = None
+        d['set_prophetVarSign'] = None
+
+    if not d['activate_baseline']:
+        d['set_baseVarName'] = None
+        d['set_baseVarSign'] = None
+
+    if not d['activate_calibration']:
+        d['set_lift'] = None
+
+    try:
+        d['set_mediaSpendName']
+    except NameError:
+        print('set_mediaSpendName must be specified')
+
+    if len(d['set_mediaVarName']) != len(d['set_mediaVarSign']):
+        raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
+
+    trainSize = round(dt_transform.shape[0] * d['set_modTrainSize'])
+    dt_train = dt_transform[d['set_mediaVarName']].iloc[:trainSize, :]
+    train_all0 = dt_train.loc[:, dt_train.sum(axis=0) == 0]
+    if train_all0.shape[1] != 0:
+        raise ValueError('These media channels contains only 0 within training period. '
+                         'Recommendation: increase set_modTrainSize, remove or combine these channels')
+
+    dayInterval = dt_transform['ds'].nlargest(2)
+    dayInterval = (dayInterval.iloc[0] - dayInterval.iloc[1]).days
+    if dayInterval == 1:
+        intervalType = 'day'
+    elif dayInterval == 7:
+        intervalType = 'week'
+    elif dayInterval >= 28 and dayInterval <= 31:
+        intervalType = 'month'
+    else:
+        raise ValueError('input data has to be daily, weekly or monthly')
+    d['dayInterval'] = dayInterval
+    mediaVarCount = len(d['set_mediaVarName'])
+
+    ################################################################
+    #### model reach metric from spend
+
+    ################################################################
+    #### clean & aggregate data
+
+    all_name = list(set(['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']
+                         , d['set_keywordsVarName'], d['set_mediaSpendName']]))
+    all_mod_name = ['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
+    if all_name != all_mod_name:
+        raise ValueError('Input variables must have unique names')
+
+    ## transform all factor variables
+    try:
+        d['set_factorVarName']
+    except:
+        pass
+    finally:
+        if len(d['set_factorVarName']) > 0:
+            pass
+        else:
+            d['set_factorVarName'] = None
+
+    ################################################################
+    #### Obtain prophet trend, seasonality and changepoints
+
+    if d['activate_prophet']:
+        if len(d['set_prophet']) != len(d['set_prophetVarSign']):
+            raise ValueError('set_prophet and set_prophetVarSign have to be the same length')
+        if len(d['set_prophet']) == 0 or len(d['set_prophetVarSign']) == 0 :
+            raise ValueError('if activate_prophet == TRUE, set_prophet and set_prophetVarSign must to specified')
+        if d['set_country'] not in dt_holiday['country']:
+            raise ValueError('set_country must be already included in the holidays.csv and as ISO 3166-1 alpha-2 abbreviation')
+
+        recurrence = dt_transform
+
+        # modelRecurrance < - prophet(recurrance
+        #                             , holidays= if (use_holiday)
+        # {holidays[country == set_country]} else {NULL}
+        # , yearly.seasonality = use_season
+        # , weekly.seasonality = use_weekday
+        # , daily.seasonality = F)
+
+
+
+    ################################################################
+    #### Finalize input
+
+    checkConditions(dt_transform, d, set_lift)
+
+    return dt_transform, d
