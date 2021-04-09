@@ -19,18 +19,20 @@ from python import fb_robyn_func as f
 
 # Uploading an Input file.
 # Specify the path where the input data file is located
-path = "C:\\Users\\anuragjoshi\Documents\\01 Projects\\04 MMM\Robyn-master2.0\\source\\"
+#path = "C:\\Users\\anuragjoshi\Documents\\01 Projects\\04 MMM\Robyn-master2.0\\source\\"
 #path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\" #delete later. Tmp line for debugging (David)
+path = "/Users/nuochen/Documents/Robyn/robyn_python/source/" #(Nuo debugging)
 
 df = pd.read_csv(path + "de_simulated_data.csv").set_index('DATE')
+dt_holidays = pd.read_csv(path + "holidays.csv")
 
 # Create dictionary to initiate parameters
 d = {
     # set model input variables
     "df_Input": df,
     "set_country": 'DE',  # only one country allowed once. Including national holidays for 59 countries, whose list can be found on our github guide
-    "set_dateVarName": ['DATE'],  # date format must be "2020-01-01"
-    "set_depVarName": ['revenue'],  # there should be only one dependent variable
+    "set_dateVarName": 'DATE',  # date format must be "2020-01-01"
+    "set_depVarName": 'revenue',  # there should be only one dependent variable
     "activate_prophet": True,  # Turn on or off the Prophet feature
     "set_prophet": ["trend", "season", "holiday"],  # "trend","season", "weekday", "holiday" are provided and case-sensitive. Recommend at least keeping Trend & Holidays
     "set_prophet_sign": ["default", "default", "default"],  # c("default", "positive", and "negative"). Recommend as default. Must be same length as set_prophet
@@ -66,6 +68,7 @@ set_lift['liftEndDate'] = pd.to_datetime(set_lift['liftStartDate'], format='%Y-%
 # Calculate and set core for running Robyn:
 print("Total Cores Running on the machine:", (multiprocessing.cpu_count()))
 
+f.inputWrangling(df, dt_holidays, d)
 
 f.plotTrainSize(True)
 

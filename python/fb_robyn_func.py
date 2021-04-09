@@ -309,7 +309,7 @@ def checkConditions(dt_transform, d, set_lift):
 
 def inputWrangling(dt, dt_holiday, d):
 
-    dt_transform = dt.copy()
+    dt_transform = dt.copy().reset_index()
     dt_transform = dt_transform.rename({d['set_dateVarName']:'ds'}, axis=1)
     dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
     dt_transform = dt_transform.rename({d['set_depVarName']: 'depVar'}, axis=1)
@@ -343,12 +343,13 @@ def inputWrangling(dt, dt_holiday, d):
 
     trainSize = round(dt_transform.shape[0] * d['set_modTrainSize'])
     dt_train = dt_transform[d['set_mediaVarName']].iloc[:trainSize, :]
-    train_all0 = dt_train.loc[dt_train.sum(axis=1) == 0, :]
-    if train_all0.shape[0] != 0:
+    train_all0 = dt_train.loc[:, dt_train.sum(axis=0) == 0]
+    if train_all0.shape[1] != 0:
         raise ValueError('These media channels contains only 0 within training period. '
                          'Recommendation: increase set_modTrainSize, remove or combine these channels')
 
-    dayInterval = (dt_transform['ds'].max() - dt_transform['ds'].min()).days
+    dayInterval = dt_transform['ds'].nlargest(2)
+    dayInterval = (dayInterval.iloc[0] - dayInterval.iloc[1]).days
     if dayInterval == 1:
         intervalType = 'day'
     elif dayInterval == 7:
@@ -396,12 +397,12 @@ def inputWrangling(dt, dt_holiday, d):
 
         recurrence = dt_transform
 
-        modelRecurrance < - prophet(recurrance
-                                    , holidays= if (use_holiday)
-        {holidays[country == set_country]} else {NULL}
-        , yearly.seasonality = use_season
-        , weekly.seasonality = use_weekday
-        , daily.seasonality = F)
+        # modelRecurrance < - prophet(recurrance
+        #                             , holidays= if (use_holiday)
+        # {holidays[country == set_country]} else {NULL}
+        # , yearly.seasonality = use_season
+        # , weekly.seasonality = use_weekday
+        # , daily.seasonality = F)
 
 
 
