@@ -6,7 +6,6 @@ from sklearn import preprocessing
 from scipy import stats
 import matplotlib.pyplot as plt
 
-import python.setting as input
 from prophet import Prophet
 
 
@@ -138,7 +137,7 @@ def gethypernames(adstock, set_mediaVarName):
     return local_name
 
 
-def plotTrainSize(plotTrainSize):
+def plotTrainSize(plotTrainSize, d):
 
     """
     Plot Bhattacharyya coef. of train/test split
@@ -151,16 +150,16 @@ def plotTrainSize(plotTrainSize):
     """
 
     if plotTrainSize:
-        if (input.activate_baseline) and (input.set_baseVarName):
-            bhattaVar = list(set(input.set_baseVarName + input.set_depVarName + input.set_mediaVarName + input.set_mediaSpendName))
+        if (d['activate_baseline']) and (d['set_baseVarName']):
+            bhattaVar = list(set(d['set_baseVarName'] + [d['set_depVarName']] + d['set_mediaVarName'] + d['set_mediaSpendName']))
         else:
             exit("either set activate_baseline = F or fill set_baseVarName")
-        bhattaVar = list(set(bhattaVar) - set(input.set_factorVarName))
-        if 'depVar' not in input.df_Input.columns:
-            dt_bhatta = input.df_Input[bhattaVar]
+        bhattaVar = list(set(bhattaVar) - set(d['set_factorVarName']))
+        if 'depVar' not in d['df_Input'].columns:
+            dt_bhatta = d['df_Input'][bhattaVar]
         else:
-            bhattaVar = ['depVar' if i == input.set_depVarName[0] else i for i in bhattaVar]
-            dt_bhatta = input.df_Input[bhattaVar]
+            bhattaVar = ['depVar' if i == d['set_depVarName'][0] else i for i in bhattaVar]
+            dt_bhatta = d['df_Input'][bhattaVar]
 
         ## define bhattacharyya distance function
         def f_bhattaCoef(mu1, mu2, Sigma1, Sigma2):
