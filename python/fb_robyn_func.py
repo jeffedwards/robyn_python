@@ -7,11 +7,19 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 import python.setting as input
+from prophet import Prophet
 
 
 def rsq(true,predicted):
     """
-    Define r-squared function
+    ----------
+    Parameters
+    ----------
+    true: true value
+    predicted: predicted value
+    Returns
+    -------
+    r-squared
     """
     sse = sum((predicted - true) ** 2)
     sst = sum((true - sum(true)/len(true)) ** 2)
@@ -20,7 +28,14 @@ def rsq(true,predicted):
 
 def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
     """
-    Define ridge lambda sequence function
+    ----------
+    Parameters
+    ----------
+    x: matrix
+    y: vector
+    Returns
+    -------
+    lambda sequence
     """
     def mysd(y):
         return math.sqrt(sum((y - sum(y) / len(y)) ** 2) / len(y))
@@ -177,3 +192,223 @@ def plotTrainSize(plotTrainSize):
         plt.ylabel("bhatta_coef")
         plt.title("Bhattacharyya coef. of train/test split \n- Select the training size with larger bhatta_coef", loc='left')
         plt.show()
+
+
+def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, gamma=None, stage=3):
+    """
+    ----------
+    Parameters
+    ----------
+    x: vector
+    adstock: chosen adstock (geometric or weibull)
+    theta: decay coefficient
+    shape: shape parameter for weibull
+    scale: scale parameter for weibull
+    alpha: hill function parameter
+    gamma: hill function parameter
+    Returns
+    -------
+    s-curve transformed vector
+    """
+
+    ## step 1: add decay rate
+    if adstock == "geometric":
+        x_decayed = adstockGeometric(x, theta)
+
+        if stage == "thetaVecCum":
+            thetaVecCum = theta
+        for t in range(1, len(x) - 1):
+            thetaVecCum[t] = thetaVecCum[t - 1] * theta
+        # thetaVecCum.plot()
+
+    elif adstock == "weibull":
+        x_list = adstockWeibull(x, shape, scale)
+        x_decayed = x_list['x_decayed']
+        # x_decayed.plot()
+
+        if stage == "thetaVecCum":
+            thetaVecCum = x_list['thetaVecCum']
+        # thetaVecCum.plot()
+
+    else:
+        print("alternative must be geometric or weibull")
+
+    ## step 2: normalize decayed independent variable # deprecated
+    # x_normalized = x_decayed
+
+    ## step 3: s-curve transformation
+    gammaTrans = round(np.quantile(np.linspace(min(x_normalized), max(normalized), 100), gamma), 4)
+    x_scurve = x_normalized ** alpha / (x_normalized ** alpha + gammaTrans ** alpha)
+    # x_scurve.plot()
+    if stage in [1, 2]:
+        x_out = x_decayed
+    # elif stage == 2:
+    # x_out = x_normalized
+    elif stage == 3:
+        x_out = x_scurve
+    elif stage == "thetaVecCum":
+        x_out = thetaVecCum
+    else:
+        raise ValueError(
+            "hyperparameters out of range. theta range: 0-1 (excl.1), shape range: 0-5 (excl.0), alpha range: 0-5 (excl.0),  gamma range: 0-1 (excl.0)")
+
+    return x_out
+
+def checkConditions(dt_transform, d, set_lift):
+    """
+    check all conditions 1 by 1; terminate and raise errors if conditions are not met
+    :param dt_transformations:
+    :return: dictionary
+    """
+    try:
+        d['set_mediaVarName']
+    except NameError:
+        print('set_mediaVarName must be specified')
+
+    if d['activate_prophet'] and d['set_prophet'] not in ['trend', 'season', 'weekday', 'holiday']:
+        raise ValueError('set_prophet must be "trend", "season", "weekday" or "holiday"')
+    if d['activate_baseline']:
+        if len(d['set_baseVarName']) != len(d['set_baseVarSign']):
+            raise ValueError('set_baseVarName and set_baseVarSign have to be the same length')
+
+    if len(d['set_mediaVarName']) != len(d['set_mediaVarSign']):
+        raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
+    if not all(x in ["positive", "negative", "default"]
+               for x in [d['set_prophetVarSign'], d['set_baseVarSign'], d['set_mediaVarSign']]):
+        raise ValueError('set_prophetVarSign, '
+                         'set_baseVarSign & set_mediaVarSign must be "positive", "negative" or "default"')
+    if d['activate_calibration']:
+        try:
+            d['set_lift']
+        except NameError:
+            print('please provide lift result or set activate_calibration = FALSE')
+
+        if d['set_lift'].shape[0] == 0:
+            raise ValueError('please provide lift result or set activate_calibration = FALSE')
+        if (min(set_lift['liftStartDate']) < min(dt_transform['ds'])
+                or (max(set_lift['liftEndDate']) > max(dt_transform['ds']) + dayInterval - 1)):
+            raise ValueError('we recommend you to only use lift results conducted within your MMM input data date range')
+
+        if d['set_iter'] < 500 or d['set_trial'] < 80:
+            raise ValueError('you are calibrating MMM. we recommend to run at least 500 iterations '
+                             'per trial and at least 80 trials at the beginning')
+
+    if d['adstock'] not in ['geometric', 'weibull']:
+        raise ValueError('adstock must be "geometric" or "weibull"')
+    if d['adstock'] == 'geometric':
+        num_hp_channel = 3
+    else:
+        num_hp_channel = 4
+    # need to add: check hyperparameter names
+    if dt_transform.isna().any(axis = None):
+        raise ValueError('input data includes NaN')
+    if dt_transform.isinf().any(axis = None):
+        raise ValueError('input data includes Inf')
+
+    return d
+
+def inputWrangling(dt, dt_holiday, d):
+
+    dt_transform = dt.copy().reset_index()
+    dt_transform = dt_transform.rename({d['set_dateVarName']:'ds'}, axis=1)
+    dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
+    dt_transform = dt_transform.rename({d['set_depVarName']: 'depVar'}, axis=1)
+
+    # check date format
+    try:
+        pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
+    except ValueError:
+        print('input date variable should have format "yyyy-mm-dd"')
+
+
+    # check variable existence
+    if not d['activate_prophet']:
+        d['set_prophet'] = None
+        d['set_prophetVarSign'] = None
+
+    if not d['activate_baseline']:
+        d['set_baseVarName'] = None
+        d['set_baseVarSign'] = None
+
+    if not d['activate_calibration']:
+        d['set_lift'] = None
+
+    try:
+        d['set_mediaSpendName']
+    except NameError:
+        print('set_mediaSpendName must be specified')
+
+    if len(d['set_mediaVarName']) != len(d['set_mediaVarSign']):
+        raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
+
+    trainSize = round(dt_transform.shape[0] * d['set_modTrainSize'])
+    dt_train = dt_transform[d['set_mediaVarName']].iloc[:trainSize, :]
+    train_all0 = dt_train.loc[:, dt_train.sum(axis=0) == 0]
+    if train_all0.shape[1] != 0:
+        raise ValueError('These media channels contains only 0 within training period. '
+                         'Recommendation: increase set_modTrainSize, remove or combine these channels')
+
+    dayInterval = dt_transform['ds'].nlargest(2)
+    dayInterval = (dayInterval.iloc[0] - dayInterval.iloc[1]).days
+    if dayInterval == 1:
+        intervalType = 'day'
+    elif dayInterval == 7:
+        intervalType = 'week'
+    elif dayInterval >= 28 and dayInterval <= 31:
+        intervalType = 'month'
+    else:
+        raise ValueError('input data has to be daily, weekly or monthly')
+    d['dayInterval'] = dayInterval
+    mediaVarCount = len(d['set_mediaVarName'])
+
+    ################################################################
+    #### model reach metric from spend
+
+    ################################################################
+    #### clean & aggregate data
+
+    all_name = list(set(['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']
+                         , d['set_keywordsVarName'], d['set_mediaSpendName']]))
+    all_mod_name = ['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
+    if all_name != all_mod_name:
+        raise ValueError('Input variables must have unique names')
+
+    ## transform all factor variables
+    try:
+        d['set_factorVarName']
+    except:
+        pass
+    finally:
+        if len(d['set_factorVarName']) > 0:
+            pass
+        else:
+            d['set_factorVarName'] = None
+
+    ################################################################
+    #### Obtain prophet trend, seasonality and changepoints
+
+    if d['activate_prophet']:
+        if len(d['set_prophet']) != len(d['set_prophetVarSign']):
+            raise ValueError('set_prophet and set_prophetVarSign have to be the same length')
+        if len(d['set_prophet']) == 0 or len(d['set_prophetVarSign']) == 0 :
+            raise ValueError('if activate_prophet == TRUE, set_prophet and set_prophetVarSign must to specified')
+        if d['set_country'] not in dt_holiday['country']:
+            raise ValueError('set_country must be already included in the holidays.csv and as ISO 3166-1 alpha-2 abbreviation')
+
+        recurrence = dt_transform
+
+        # modelRecurrance < - prophet(recurrance
+        #                             , holidays= if (use_holiday)
+        # {holidays[country == set_country]} else {NULL}
+        # , yearly.seasonality = use_season
+        # , weekly.seasonality = use_weekday
+        # , daily.seasonality = F)
+
+
+
+    ################################################################
+    #### Finalize input
+
+    checkConditions(dt_transform, d, set_lift)
+
+    return dt_transform, d
