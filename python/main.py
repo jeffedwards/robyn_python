@@ -14,16 +14,16 @@ import multiprocessing
 from scipy.spatial.distance import mahalanobis
 import scipy as sp
 
-
 # Import functions and global parameters
 from python import fb_robyn_func as f
 import python.setting as input
 
 
+
 # Uploading an Input file.
 # Specify the path where the input data file is located
-#path = "C:\\Users\\anuragjoshi\Documents\\01 Projects\\04 MMM\Robyn-master2.0\\source\\"
-path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\" #delete later. Tmp line for debugging (David)
+path = "C:\\Users\\anuragjoshi\Documents\\01 Projects\\04 MMM\Robyn-master2.0\\source\\"
+#path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\" #delete later. Tmp line for debugging (David)
 
 df = pd.read_csv(path + "de_simulated_data.csv")
 input.df_Input = df.set_index('DATE')
@@ -31,7 +31,6 @@ input.df_Input = df.set_index('DATE')
 
 ################################################################
 #### set model input variables
-
 
 # Loading Prophet in Python:
 input.set_country = 'DE'
@@ -41,7 +40,7 @@ input.set_depVarName = ['revenue']
 input.activate_prophet = True
 
 # "trend","season", "weekday", "holiday" are provided and case-sensitive. Recommended to at least keep Trend & Holidays
-input.set_prophet  = ["trend", "season", "holiday"] #
+input.set_prophet  = ["trend", "season", "holiday"]
 input.set_prophet_sign = ["default","default",'default']
 
 input.activate_baseline = True
@@ -58,7 +57,6 @@ input.set_mediaSpendName = ['tv_S','ooh_S','print_S','facebook_S','search_S']
 input.set_mediaVarSign = ["positive","positive","positive","positive","positive"]
 
 input.set_factorVarName = []
-
 
 
 ################################################################
@@ -85,3 +83,4 @@ input.set_hyperOptimAlgo = "DiscreteOnePlusOne"
 # number of allowed iterations per trial. 40 is recommended without calibration, 100 with calibration.
 ## Time estimation: with geometric adstock, 500 iterations * 40 trials and 6 cores
 input.set_trial = 3
+

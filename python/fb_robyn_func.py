@@ -58,6 +58,7 @@ def adstockGeometric(x, theta):
 
 def helperWeibull(x, y, vec_cum, n):
     """
+
     :param x:
     :param y:
     :param vec_cum:

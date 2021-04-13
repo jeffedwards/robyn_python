@@ -146,5 +146,3 @@ model_output_collect <- f.robyn(set_hyperBoundLocal
                                 ,set_trial = set_trial
                                 ,set_cores = set_cores
                                 ,plot_folder = "~/Documents/GitHub/plots")
-
-
