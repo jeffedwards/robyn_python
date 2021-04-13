@@ -70,7 +70,7 @@ print("Total Cores Running on the machine:", (multiprocessing.cpu_count()))
 
 f.inputWrangling(df, dt_holidays, d)
 
-f.plotTrainSize(True)
+f.plotTrainSize(True, d)
 
 
 
