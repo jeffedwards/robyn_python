@@ -7,7 +7,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 
 from prophet import Prophet
-
+from datetime import datetime, timedelta
 
 def rsq(true,predicted):
     """
@@ -306,7 +306,7 @@ def checkConditions(dt_transform, d, set_lift):
 
     return d
 
-def inputWrangling(dt, dt_holiday, d):
+def inputWrangling(dt, dt_holiday, d, set_lift):
 
     dt_transform = dt.copy().reset_index()
     dt_transform = dt_transform.rename({d['set_dateVarName']:'ds'}, axis=1)
@@ -362,12 +362,29 @@ def inputWrangling(dt, dt_holiday, d):
 
     ################################################################
     #### model reach metric from spend
+    mediaCostFactor = pd.DataFrame(dt_transform[d['set_mediaSpendName']].sum(axis=0)/dt_transform[d['set_mediaVarName']].sum(axis=0))
+    mediaCostFactor = mediaCostFactor.rename(index=d['set_mediaVarName'])
+    costSelector = pd.Series(d['set_mediaVarName'])[pd.Series(d['set_mediaSpendName']) == pd.Series(d['set_mediaVarName'])]
+
+    #if len(costSelector) != 0:
+    #    modNLSCollect = []
+    #    yhatCollect = []
+    #    plotNLSCollect = []
+    #    for i in range(mediaVarCount - 1):
+    #       dt_spendModInput = dt_transform[]
+
+
+
+
+    #d['mediaCostFactor'] = mediaCostFactor
+    #d['costSelector'] = costSelector
+    #d['getSpendSum'] = getSpendSum
 
     ################################################################
     #### clean & aggregate data
-
-    all_name = list(set(['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']
-                         , d['set_keywordsVarName'], d['set_mediaSpendName']]))
+    all_name = list(
+        {'ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName'], d['set_keywordsVarName'],
+         d['set_mediaSpendName']})
     all_mod_name = ['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
     if all_name != all_mod_name:
         raise ValueError('Input variables must have unique names')
@@ -395,14 +412,63 @@ def inputWrangling(dt, dt_holiday, d):
             raise ValueError('set_country must be already included in the holidays.csv and as ISO 3166-1 alpha-2 abbreviation')
 
         recurrence = dt_transform
+        use_trend = True if 'trend' in d['set_prophet'] else False
+        use_season = True if 'season' in d['set_prophet'] else False
+        use_weekday = True if 'weekday' in d['set_prophet'] else False
+        use_holiday = True if 'holiday' in d['set_prophet'] else False
 
-        # modelRecurrance < - prophet(recurrance
-        #                             , holidays= if (use_holiday)
-        # {holidays[country == set_country]} else {NULL}
-        # , yearly.seasonality = use_season
-        # , weekly.seasonality = use_weekday
-        # , daily.seasonality = F)
+        if intervalType == 'day':
+            holidays = dt_holiday
+        elif intervalType == 'week':
+            weekStartInput = dt_transform['ds'][0].weekday()
+            if weekStartInput == 1:
+                weekStartMonday = True
+            elif weekStartInput == 6:
+                weekStartMonday = False
+            else:
+                raise ValueError('week start has to be Monday or Sunday')
+            dt_transform['weekday'] = dt_transform['ds'].apply(lambda x: x.weekday())
+            dt_transform['dsWeekStart'] = dt_transform.apply(lambda x: x['ds'] - timedelta(days=x['weekday']), axis=1)
+            dt_transform['ds'] = dt_transform['dsWeekStart']
+            dt_transform.drop(['dsWeekStart', 'weekday'], axis=1)
+            holidays = dt_transform.groupby(['ds', 'country', 'year'])['holiday'].apply(
+                lambda x: '#'.join(x)).reset_index()
 
+        elif intervalType == 'month':
+            monthStartInput = dt_transform['ds'][0].strftime("%d")
+            if monthStartInput != '01':
+                raise ValueError("monthly data should have first day of month as datestampe, e.g.'2020-01-01'")
+            dt_transform['month'] = dt_transform['ds'] + pd.offsets.MonthEnd(0) - pd.offsets.MonthBegin(normalize=True)
+            dt_transform['ds'] = dt_transform['month']
+            dt_transform.drop(['month'], axis=1)
+            holidays = dt_transform.groupby(['ds', 'country', 'year'])['holiday'].apply(
+                lambda x: '#'.join(x)).reset_index()
+        h = holidays[holidays['country'] == d['set_country']] if use_holiday else None
+        modelRecurrance = Prophet(holidays=h, yearly_seasonality=use_season, weekly_seasonality=use_weekday, daily_seasonality=False)
+        modelRecurrance.fit(recurrence)
+        forecastRecurrance = modelRecurrance.predict(dt_transform)
+
+
+        d['modelRecurrance'] = modelRecurrance
+        d['forecastRecurrance'] = forecastRecurrance
+
+        # python implementation of scale() is different from R, may need to hard-code the R equivalent
+        if use_trend:
+            fc_trend = forecastRecurrance['trend'][:recurrence.shape[0]]
+            fc_trend = preprocessing.scale(fc_trend)
+            dt_transform['trend'] = fc_trend
+        if use_season:
+            fc_season = forecastRecurrance['yearly'][:recurrence.shape[0]]
+            fc_season = preprocessing.scale(fc_season)
+            dt_transform['seasonal'] = fc_season
+        if use_weekday:
+            fc_weekday = forecastRecurrance['weekly'][:recurrence.shape[0]]
+            fc_weekday = preprocessing.scale(fc_weekday)
+            dt_transform['weekday'] = fc_weekday
+        if use_holiday:
+            fc_holiday = forecastRecurrance['holidays'][:recurrence.shape[0]]
+            fc_holiday = preprocessing.scale(fc_holiday)
+            dt_transform['trend'] = fc_holiday
 
 
     ################################################################

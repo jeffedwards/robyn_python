@@ -68,7 +68,7 @@ set_lift['liftEndDate'] = pd.to_datetime(set_lift['liftStartDate'], format='%Y-%
 # Calculate and set core for running Robyn:
 print("Total Cores Running on the machine:", (multiprocessing.cpu_count()))
 
-f.inputWrangling(df, dt_holidays, d)
+f.inputWrangling(df, dt_holidays, d, set_lift)
 
 f.plotTrainSize(True, d)
 
