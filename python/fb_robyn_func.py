@@ -20,6 +20,13 @@ from scipy import stats
 # import weibull as weibull
 from sklearn import preprocessing
 # from prophet import Prophet
+from scipy import stats
+import matplotlib.pyplot as plt
+
+from prophet import Prophet
+from datetime import datetime, timedelta
+
+
 
 
 ########################################################################################################################
@@ -38,6 +45,7 @@ def initiate_dictionary():
     return dict_vars
 
 
+
 def plotTrainSize(plotTrainSize, d):
 
     """
@@ -52,7 +60,8 @@ def plotTrainSize(plotTrainSize, d):
 
     if plotTrainSize:
         if (d['activate_baseline']) and (d['set_baseVarName']):
-            bhattaVar = list(set(d['set_baseVarName'] + [d['set_depVarName']] + d['set_mediaVarName'] + d['set_mediaSpendName']))
+            bhattaVar = list(
+                set(d['set_baseVarName'] + [d['set_depVarName']] + d['set_mediaVarName'] + d['set_mediaSpendName']))
         else:
             exit("either set activate_baseline = F or fill set_baseVarName")
         bhattaVar = list(set(bhattaVar) - set(d['set_factorVarName']))
@@ -90,7 +99,8 @@ def plotTrainSize(plotTrainSize, d):
         plt.plot(sizeVec, bcCollect)
         plt.xlabel("train_size")
         plt.ylabel("bhatta_coef")
-        plt.title("Bhattacharyya coef. of train/test split \n- Select the training size with larger bhatta_coef", loc='left')
+        plt.title("Bhattacharyya coef. of train/test split \n- Select the training size with larger bhatta_coef",
+                  loc='left')
         plt.show()
 
 
@@ -102,7 +112,8 @@ def plotTrainSize(plotTrainSize, d):
 # TODO plotResponseCurves
 
 
-def checkConditions(dt_transform, d, set_lift):
+
+def checkConditions(dt_transform, d, set_lift=None):
     """
     check all conditions 1 by 1; terminate and raise errors if conditions are not met
     :param dt_transformations:
@@ -113,7 +124,7 @@ def checkConditions(dt_transform, d, set_lift):
     except NameError:
         print('set_mediaVarName must be specified')
 
-    if d['activate_prophet'] and d['set_prophet'] not in ['trend', 'season', 'weekday', 'holiday']:
+    if d['activate_prophet'] and not set(d['set_prophet']).issubset({'trend', 'season', 'weekday', 'holiday'}):
         raise ValueError('set_prophet must be "trend", "season", "weekday" or "holiday"')
     if d['activate_baseline']:
         if len(d['set_baseVarName']) != len(d['set_baseVarSign']):
@@ -121,13 +132,14 @@ def checkConditions(dt_transform, d, set_lift):
 
     if len(d['set_mediaVarName']) != len(d['set_mediaVarSign']):
         raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
-    if not all(x in ["positive", "negative", "default"]
-               for x in [d['set_prophetVarSign'], d['set_baseVarSign'], d['set_mediaVarSign']]):
+    if not (set(d['set_prophetVarSign']).issubset({'positive", "negative", "default'}) and
+               set(d['set_baseVarSign']).issubset({'positive", "negative", "default'}) and
+               set(d['set_mediaVarSign']).issubset({'positive", "negative", "default'})):
         raise ValueError('set_prophetVarSign, '
                          'set_baseVarSign & set_mediaVarSign must be "positive", "negative" or "default"')
     if d['activate_calibration']:
         try:
-            d['set_lift']
+            set_lift
         except NameError:
             print('please provide lift result or set activate_calibration = FALSE')
 
@@ -135,7 +147,8 @@ def checkConditions(dt_transform, d, set_lift):
             raise ValueError('please provide lift result or set activate_calibration = FALSE')
         if (min(set_lift['liftStartDate']) < min(dt_transform['ds'])
                 or (max(set_lift['liftEndDate']) > max(dt_transform['ds']) + dayInterval - 1)):
-            raise ValueError('we recommend you to only use lift results conducted within your MMM input data date range')
+            raise ValueError(
+                'we recommend you to only use lift results conducted within your MMM input data date range')
 
         if d['set_iter'] < 500 or d['set_trial'] < 80:
             raise ValueError('you are calibrating MMM. we recommend to run at least 500 iterations '
@@ -148,9 +161,9 @@ def checkConditions(dt_transform, d, set_lift):
     else:
         num_hp_channel = 4
     # need to add: check hyperparameter names
-    if dt_transform.isna().any(axis = None):
+    if dt_transform.isna().any(axis=None):
         raise ValueError('input data includes NaN')
-    if dt_transform.isinf().any(axis = None):
+    if dt_transform.isinf().any(axis=None):
         raise ValueError('input data includes Inf')
 
     return d
@@ -180,18 +193,18 @@ def unit_format(x_in):
     return x_out
 
 
-def inputWrangling(dt, dt_holiday, d):
-
+def inputWrangling(dt, dt_holiday, d, set_lift):
     dt_transform = dt.copy().reset_index()
-    dt_transform = dt_transform.rename({d['set_dateVarName']:'ds'}, axis=1)
+    dt_transform = dt_transform.rename({d['set_dateVarName']: 'ds'}, axis=1)
     dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
     dt_transform = dt_transform.rename({d['set_depVarName']: 'depVar'}, axis=1)
-
+    dt_holiday['ds'] = pd.to_datetime(dt_holiday['ds'], format='%Y-%m-%d')
     # check date format
     try:
         pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
     except ValueError:
         print('input date variable should have format "yyyy-mm-dd"')
+
 
     # check variable existence
     if not d['activate_prophet']:
@@ -235,15 +248,29 @@ def inputWrangling(dt, dt_holiday, d):
 
     ################################################################
     #### model reach metric from spend
+    # mediaCostFactor = pd.DataFrame(dt_transform[d['set_mediaSpendName']].sum(axis=0)/dt_transform[d['set_mediaVarName']].sum(axis=0))
+    # mediaCostFactor = mediaCostFactor.rename(index=d['set_mediaVarName'])
+    # costSelector = pd.Series(d['set_mediaVarName'])[pd.Series(d['set_mediaSpendName']) == pd.Series(d['set_mediaVarName'])]
+
+    # if len(costSelector) != 0:
+    #    modNLSCollect = []
+    #    yhatCollect = []
+    #    plotNLSCollect = []
+    #    for i in range(mediaVarCount - 1):
+    #       dt_spendModInput = dt_transform[]
+
+    # d['mediaCostFactor'] = mediaCostFactor
+    # d['costSelector'] = costSelector
+    # d['getSpendSum'] = getSpendSum
 
     ################################################################
     #### clean & aggregate data
-
-    all_name = list(set(['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']
-                         , d['set_keywordsVarName'], d['set_mediaSpendName']]))
-    all_mod_name = ['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
-    if all_name != all_mod_name:
-        raise ValueError('Input variables must have unique names')
+    #all_name = list(
+    #    {'ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName'], d['set_keywordsVarName'],
+    #     d['set_mediaSpendName']})
+    #all_mod_name = ['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
+    #if all_name != all_mod_name:
+    #    raise ValueError('Input variables must have unique names')
 
     ## transform all factor variables
     try:
@@ -252,7 +279,7 @@ def inputWrangling(dt, dt_holiday, d):
         pass
     finally:
         if len(d['set_factorVarName']) > 0:
-            pass
+            dt_transform[d['set_factorVarName']].apply(lambda x: x.astype('category'))
         else:
             d['set_factorVarName'] = None
 
@@ -262,21 +289,70 @@ def inputWrangling(dt, dt_holiday, d):
     if d['activate_prophet']:
         if len(d['set_prophet']) != len(d['set_prophetVarSign']):
             raise ValueError('set_prophet and set_prophetVarSign have to be the same length')
-        if len(d['set_prophet']) == 0 or len(d['set_prophetVarSign']) == 0 :
+        if len(d['set_prophet']) == 0 or len(d['set_prophetVarSign']) == 0:
             raise ValueError('if activate_prophet == TRUE, set_prophet and set_prophetVarSign must to specified')
-        if d['set_country'] not in dt_holiday['country']:
-            raise ValueError('set_country must be already included in the holidays.csv and as ISO 3166-1 alpha-2 abbreviation')
+        if d['set_country'] not in dt_holiday['country'].values:
+            raise ValueError(
+                'set_country must be already included in the holidays.csv and as ISO 3166-1 alpha-2 abbreviation')
 
-        recurrence = dt_transform
+        recurrence = dt_transform.copy().rename(columns={'depVar': 'y'})
+        use_trend = True if 'trend' in d['set_prophet'] else False
+        use_season = True if 'season' in d['set_prophet'] else False
+        use_weekday = True if 'weekday' in d['set_prophet'] else False
+        use_holiday = True if 'holiday' in d['set_prophet'] else False
 
-        # modelRecurrance < - prophet(recurrance
-        #                             , holidays= if (use_holiday)
-        # {holidays[country == set_country]} else {NULL}
-        # , yearly.seasonality = use_season
-        # , weekly.seasonality = use_weekday
-        # , daily.seasonality = F)
+        if intervalType == 'day':
+            holidays = dt_holiday
+        elif intervalType == 'week':
+            weekStartInput = dt_transform['ds'][0].weekday()
+            if weekStartInput == 0:
+                weekStartMonday = True
+            elif weekStartInput == 6:
+                weekStartMonday = False
+            else:
+                raise ValueError('week start has to be Monday or Sunday')
+            dt_holiday['weekday'] = dt_holiday['ds'].apply(lambda x: x.weekday())
+            dt_holiday['dsWeekStart'] = dt_holiday.apply(lambda x: x['ds'] - timedelta(days=x['weekday']), axis=1)
+            dt_holiday['ds'] = dt_holiday['dsWeekStart']
+            dt_holiday = dt_holiday.drop(['dsWeekStart', 'weekday'], axis=1)
+            holidays = dt_holiday.groupby(['ds', 'country', 'year'])['holiday'].apply(
+                lambda x: '#'.join(x)).reset_index()
 
+        elif intervalType == 'month':
+            monthStartInput = dt_transform['ds'][0].strftime("%d")
+            if monthStartInput != '01':
+                raise ValueError("monthly data should have first day of month as datestampe, e.g.'2020-01-01'")
+            dt_holiday['month'] = dt_holiday['ds'] + pd.offsets.MonthEnd(0) - pd.offsets.MonthBegin(normalize=True)
+            dt_holiday['ds'] = dt_holiday['month']
+            dt_holiday.drop(['month'], axis=1)
+            holidays = dt_holiday.groupby(['ds', 'country', 'year'])['holiday'].apply(
+                lambda x: '#'.join(x)).reset_index()
+        h = holidays[holidays['country'] == d['set_country']] if use_holiday else None
+        modelRecurrance = Prophet(holidays=h, yearly_seasonality=use_season, weekly_seasonality=use_weekday,
+                                  daily_seasonality=False)
+        modelRecurrance.fit(recurrence)
+        forecastRecurrance = modelRecurrance.predict(dt_transform)
 
+        d['modelRecurrance'] = modelRecurrance
+        d['forecastRecurrance'] = forecastRecurrance
+
+        # python implementation of scale() is different from R, may need to hard-code the R equivalent
+        if use_trend:
+            fc_trend = forecastRecurrance['trend'][:recurrence.shape[0]]
+            fc_trend = preprocessing.scale(fc_trend)
+            dt_transform['trend'] = fc_trend
+        if use_season:
+            fc_season = forecastRecurrance['yearly'][:recurrence.shape[0]]
+            fc_season = preprocessing.scale(fc_season)
+            dt_transform['seasonal'] = fc_season
+        if use_weekday:
+            fc_weekday = forecastRecurrance['weekly'][:recurrence.shape[0]]
+            fc_weekday = preprocessing.scale(fc_weekday)
+            dt_transform['weekday'] = fc_weekday
+        if use_holiday:
+            fc_holiday = forecastRecurrance['holidays'][:recurrence.shape[0]]
+            fc_holiday = preprocessing.scale(fc_holiday)
+            dt_transform['trend'] = fc_holiday
 
     ################################################################
     #### Finalize input
@@ -284,6 +360,7 @@ def inputWrangling(dt, dt_holiday, d):
     checkConditions(dt_transform, d, set_lift)
 
     return dt_transform, d
+
 
 
 def gethypernames(adstock, set_mediaVarName):
