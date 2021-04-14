@@ -35,7 +35,7 @@ d = {
     "set_depVarName": 'revenue',  # there should be only one dependent variable
     "activate_prophet": True,  # Turn on or off the Prophet feature
     "set_prophet": ["trend", "season", "holiday"],  # "trend","season", "weekday", "holiday" are provided and case-sensitive. Recommend at least keeping Trend & Holidays
-    "set_prophet_sign": ["default", "default", "default"],  # c("default", "positive", and "negative"). Recommend as default. Must be same length as set_prophet
+    "set_prophetVarSign": ["default", "default", "default"],  # c("default", "positive", and "negative"). Recommend as default. Must be same length as set_prophet
     "activate_baseline": True,
     "set_baseVarName": ['competitor_sales_B'],  # typically competitors, price & promotion, temperature, unemployment rate etc
     "set_baseVarSign": ['negative'],  # c("default", "positive", and "negative"), control the signs of coefficients for baseline variables
