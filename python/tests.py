@@ -5,8 +5,7 @@
 import unittest as ut
 
 # local
-# import python.helpers.functions_data as fd
-import helpers.functions_data as fd
+from python import fb_robyn_func as frf
 
 
 ########################################################################################################################
@@ -19,15 +18,15 @@ class TestStuff(ut.TestCase):
         """
 
         x_in_test = 1545354165
-        result = fd.unit_format(x_in=x_in_test)
+        result = frf.unit_format(x_in=x_in_test)
         self.assertEqual(result, '1.5 bln')
 
         x_in_test = 654654
-        result = fd.unit_format(x_in=x_in_test)
+        result = frf.unit_format(x_in=x_in_test)
         self.assertEqual(result, '654.7 tsd')
 
         x_in_test = 984.654
-        result = fd.unit_format(x_in=x_in_test)
+        result = frf.unit_format(x_in=x_in_test)
         self.assertEqual(result, '985')
 
 
