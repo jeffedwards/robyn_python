@@ -1,140 +1,41 @@
-import pandas as pd
+# Copyright (c) Facebook, Inc. and its affiliates.
+
+# This source code is licensed under the MIT license found in the
+# LICENSE file in the root directory of this source tree.
+
+########################################################################################################################
+# Data transformation and helper functions
+########################################################################################################################
+
+
+########################################################################################################################
+# IMPORTS
+
 import math
-import numpy as np
-#import weibull as weibull
-from sklearn import preprocessing
-from scipy import stats
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from scipy import stats
+# import weibull as weibull
+from sklearn import preprocessing
+# from prophet import Prophet
 
-from prophet import Prophet
 
+########################################################################################################################
+# FUNCTIONS
 
-def rsq(true,predicted):
+def initiate_dictionary():
     """
-    ----------
-    Parameters
-    ----------
-    true: true value
-    predicted: predicted value
-    Returns
-    -------
-    r-squared
+    Creates a dictionary with variables that are set or updated withing functions
+    :return: the dictionary
     """
-    sse = sum((predicted - true) ** 2)
-    sst = sum((true - sum(true)/len(true)) ** 2)
-    return 1 - sse / sst
+    dict_vars = {
+        'variable_01': dict(),
+        'variable_02': pd.DataFrame()
+    }
 
-
-def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
-    """
-    ----------
-    Parameters
-    ----------
-    x: matrix
-    y: vector
-    Returns
-    -------
-    lambda sequence
-    """
-    def mysd(y):
-        return math.sqrt(sum((y - sum(y) / len(y)) ** 2) / len(y))
-
-    sx = x.apply(mysd)
-    sx = preprocessing.scale(x).T
-    sy = y.to_numpy()
-    sxy = sx * sy
-    sxy = sxy.T
-    # return sxy
-    lambda_max = max(abs(sxy.sum(axis=0)) / (
-                0.001 * x.shape[0]))  # 0.001 is the default smalles alpha value of glmnet for ridge (alpha = 0)
-    lambda_max_log = math.log(lambda_max)
-
-    log_step = (math.log(lambda_max) - math.log(lambda_max * lambda_min_ratio)) / (seq_len - 1)
-    log_seq = np.linspace(math.log(lambda_max), math.log(lambda_max * lambda_min_ratio), seq_len)
-    lambda_seq = np.exp(log_seq)
-    return lambda_seq
-
-def adstockGeometric(x, theta):
-    """
-    Parameters
-    ----------
-    x: vector
-    theta: decay coefficient
-    Returns
-    -------
-    transformed vector
-    """
-    x_decayed = [x[0]] + [0] * (len(x) - 1)
-    for i in range(1, len(x_decayed)):
-        x_decayed[i] = x[i] + theta * x_decayed[i - 1]
-
-    return x_decayed
-
-def helperWeibull(x, y, vec_cum, n):
-    """
-
-    :param x:
-    :param y:
-    :param vec_cum:
-    :param n:
-    :return:
-    """
-
-    x_vec = np.array([0] * (y - 1) + [x] * (n - y + 1))
-    vec_lag = np.roll(vec_cum, y - 1)
-    vec_lag[: y - 1] = 0
-    x_matrix = np.c_[x_vec, vec_cum]
-    x_prod = np.multiply.reduce(x_matrix, axis=1)
-
-    return x_prod
-
-
-def adstockWeibull(x, shape, scale):
-    """
-    Parameters
-    ----------
-    x: vector
-    shape: shape parameter for Weibull
-    scale: scale parameter for Weibull
-    Returns
-    -------
-    tuple
-    """
-    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.weibull_min.html
-
-    n = len(x)
-    bin =list(range(1, n + 1))
-    scaleTrans = round(np.quantile(bin, scale))
-    thetaVec = 1 - stats.weibull_min.cdf(bin[:-1], shape, scale=scaleTrans)
-    thetaVec = np.concatenate(([1], thetaVec))
-    thetaVecCum = np.cumprod(thetaVec).tolist()
-
-    x_decayed = list(map(lambda i, j: helperWeibull(i, j, vec_cum=thetaVecCum, n=n), x, bin))
-    x_decayed = np.concatenate(x_decayed, axis=0).reshape(7, 7)
-    x_decayed = np.sum(x_decayed, axis=1).tolist()
-
-    return x_decayed, thetaVecCum
-
-
-def gethypernames(adstock, set_mediaVarName):
-    """
-    Parameters
-    ----------
-    adstock: chosen adstock (geometric or weibull)
-    set_mediaVarName: list of media channels
-    Returns
-    -------
-    crossed list of adstock parameters and media channels
-    """
-
-    if adstock == "geometric":
-        global_name = ["thetas", "alphas", "gammas"]
-        local_name = sorted(list([i+"_"+str(j) for i in set_mediaVarName for j in global_name]))
-    elif adstock == "weibull":
-        global_name = ["shapes", "scales", "alphas", "gammas"]
-        local_name = sorted(list([i+"_"+str(j) for i in set_mediaVarName for j in global_name]))
-
-    return local_name
+    return dict_vars
 
 
 def plotTrainSize(plotTrainSize, d):
@@ -193,65 +94,13 @@ def plotTrainSize(plotTrainSize, d):
         plt.show()
 
 
-def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, gamma=None, stage=3):
-    """
-    ----------
-    Parameters
-    ----------
-    x: vector
-    adstock: chosen adstock (geometric or weibull)
-    theta: decay coefficient
-    shape: shape parameter for weibull
-    scale: scale parameter for weibull
-    alpha: hill function parameter
-    gamma: hill function parameter
-    Returns
-    -------
-    s-curve transformed vector
-    """
+########################
+# TODO plotAdstockCurves
 
-    ## step 1: add decay rate
-    if adstock == "geometric":
-        x_decayed = adstockGeometric(x, theta)
 
-        if stage == "thetaVecCum":
-            thetaVecCum = theta
-        for t in range(1, len(x) - 1):
-            thetaVecCum[t] = thetaVecCum[t - 1] * theta
-        # thetaVecCum.plot()
+########################
+# TODO plotResponseCurves
 
-    elif adstock == "weibull":
-        x_list = adstockWeibull(x, shape, scale)
-        x_decayed = x_list['x_decayed']
-        # x_decayed.plot()
-
-        if stage == "thetaVecCum":
-            thetaVecCum = x_list['thetaVecCum']
-        # thetaVecCum.plot()
-
-    else:
-        print("alternative must be geometric or weibull")
-
-    ## step 2: normalize decayed independent variable # deprecated
-    # x_normalized = x_decayed
-
-    ## step 3: s-curve transformation
-    gammaTrans = round(np.quantile(np.linspace(min(x_normalized), max(normalized), 100), gamma), 4)
-    x_scurve = x_normalized ** alpha / (x_normalized ** alpha + gammaTrans ** alpha)
-    # x_scurve.plot()
-    if stage in [1, 2]:
-        x_out = x_decayed
-    # elif stage == 2:
-    # x_out = x_normalized
-    elif stage == 3:
-        x_out = x_scurve
-    elif stage == "thetaVecCum":
-        x_out = thetaVecCum
-    else:
-        raise ValueError(
-            "hyperparameters out of range. theta range: 0-1 (excl.1), shape range: 0-5 (excl.0), alpha range: 0-5 (excl.0),  gamma range: 0-1 (excl.0)")
-
-    return x_out
 
 def checkConditions(dt_transform, d, set_lift):
     """
@@ -306,6 +155,31 @@ def checkConditions(dt_transform, d, set_lift):
 
     return d
 
+
+def unit_format(x_in):
+    """
+    Define helper unit format function for axis
+    :param x_in: a number in decimal or float format
+    :return: the number rounded and in certain cases abbreviated in the thousands, millions, or billions
+    """
+
+    # suffixes = ["", "Thousand", "Million", "Billion", "Trillion", "Quadrillion"]
+    number = str("{:,}".format(x_in))
+    n_commas = number.count(',')
+    # print(number.split(',')[0], suffixes[n_commas])
+
+    if n_commas >= 3:
+        x_out = f'{round(x_in/1000000000, 1)} bln'
+    elif n_commas == 2:
+        x_out = f'{round(x_in/1000000, 1)} mio'
+    elif n_commas == 1:
+        x_out = f'{round(x_in/1000, 1)} tsd'
+    else:
+        x_out = str(int(round(x_in, 0)))
+
+    return x_out
+
+
 def inputWrangling(dt, dt_holiday, d):
 
     dt_transform = dt.copy().reset_index()
@@ -318,7 +192,6 @@ def inputWrangling(dt, dt_holiday, d):
         pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
     except ValueError:
         print('input date variable should have format "yyyy-mm-dd"')
-
 
     # check variable existence
     if not d['activate_prophet']:
@@ -411,3 +284,232 @@ def inputWrangling(dt, dt_holiday, d):
     checkConditions(dt_transform, d, set_lift)
 
     return dt_transform, d
+
+
+def gethypernames(adstock, set_mediaVarName):
+    """
+    Parameters
+    ----------
+    adstock: chosen adstock (geometric or weibull)
+    set_mediaVarName: list of media channels
+    Returns
+    -------
+    crossed list of adstock parameters and media channels
+    """
+
+    if adstock == "geometric":
+        global_name = ["thetas", "alphas", "gammas"]
+        local_name = sorted(list([i+"_"+str(j) for i in set_mediaVarName for j in global_name]))
+    elif adstock == "weibull":
+        global_name = ["shapes", "scales", "alphas", "gammas"]
+        local_name = sorted(list([i+"_"+str(j) for i in set_mediaVarName for j in global_name]))
+
+    return local_name
+
+
+def adstockGeometric(x, theta):
+    """
+    Parameters
+    ----------
+    x: vector
+    theta: decay coefficient
+    Returns
+    -------
+    transformed vector
+    """
+    x_decayed = [x[0]] + [0] * (len(x) - 1)
+    for i in range(1, len(x_decayed)):
+        x_decayed[i] = x[i] + theta * x_decayed[i - 1]
+
+    return x_decayed
+
+
+def helperWeibull(x, y, vec_cum, n):
+    """
+
+    :param x:
+    :param y:
+    :param vec_cum:
+    :param n:
+    :return:
+    """
+
+    x_vec = np.array([0] * (y - 1) + [x] * (n - y + 1))
+    vec_lag = np.roll(vec_cum, y - 1)
+    vec_lag[: y - 1] = 0
+    x_matrix = np.c_[x_vec, vec_cum]
+    x_prod = np.multiply.reduce(x_matrix, axis=1)
+
+    return x_prod
+
+
+def adstockWeibull(x, shape, scale):
+    """
+    Parameters
+    ----------
+    x: vector
+    shape: shape parameter for Weibull
+    scale: scale parameter for Weibull
+    Returns
+    -------
+    tuple
+    """
+    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.weibull_min.html
+
+    n = len(x)
+    bin =list(range(1, n + 1))
+    scaleTrans = round(np.quantile(bin, scale))
+    thetaVec = 1 - stats.weibull_min.cdf(bin[:-1], shape, scale=scaleTrans)
+    thetaVec = np.concatenate(([1], thetaVec))
+    thetaVecCum = np.cumprod(thetaVec).tolist()
+
+    x_decayed = list(map(lambda i, j: helperWeibull(i, j, vec_cum=thetaVecCum, n=n), x, bin))
+    x_decayed = np.concatenate(x_decayed, axis=0).reshape(7, 7)
+    x_decayed = np.sum(x_decayed, axis=1).tolist()
+
+    return x_decayed, thetaVecCum
+
+
+def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, gamma=None, stage=3):
+    """
+    ----------
+    Parameters
+    ----------
+    x: vector
+    adstock: chosen adstock (geometric or weibull)
+    theta: decay coefficient
+    shape: shape parameter for weibull
+    scale: scale parameter for weibull
+    alpha: hill function parameter
+    gamma: hill function parameter
+    Returns
+    -------
+    s-curve transformed vector
+    """
+
+    ## step 1: add decay rate
+    if adstock == "geometric":
+        x_decayed = adstockGeometric(x, theta)
+
+        if stage == "thetaVecCum":
+            thetaVecCum = theta
+        for t in range(1, len(x) - 1):
+            thetaVecCum[t] = thetaVecCum[t - 1] * theta
+        # thetaVecCum.plot()
+
+    elif adstock == "weibull":
+        x_list = adstockWeibull(x, shape, scale)
+        x_decayed = x_list['x_decayed']
+        # x_decayed.plot()
+
+        if stage == "thetaVecCum":
+            thetaVecCum = x_list['thetaVecCum']
+        # thetaVecCum.plot()
+
+    else:
+        print("alternative must be geometric or weibull")
+
+    ## step 2: normalize decayed independent variable # deprecated
+    # x_normalized = x_decayed
+
+    ## step 3: s-curve transformation
+    gammaTrans = round(np.quantile(np.linspace(min(x_normalized), max(normalized), 100), gamma), 4)
+    x_scurve = x_normalized ** alpha / (x_normalized ** alpha + gammaTrans ** alpha)
+    # x_scurve.plot()
+    if stage in [1, 2]:
+        x_out = x_decayed
+    # elif stage == 2:
+    # x_out = x_normalized
+    elif stage == 3:
+        x_out = x_scurve
+    elif stage == "thetaVecCum":
+        x_out = thetaVecCum
+    else:
+        raise ValueError(
+            "hyperparameters out of range. theta range: 0-1 (excl.1), shape range: 0-5 (excl.0), alpha range: 0-5 (excl.0),  gamma range: 0-1 (excl.0)")
+
+    return x_out
+
+
+def rsq(true,predicted):
+    """
+    ----------
+    Parameters
+    ----------
+    true: true value
+    predicted: predicted value
+    Returns
+    -------
+    r-squared
+    """
+    sse = sum((predicted - true) ** 2)
+    sst = sum((true - sum(true)/len(true)) ** 2)
+    return 1 - sse / sst
+
+
+def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
+    """
+    ----------
+    Parameters
+    ----------
+    x: matrix
+    y: vector
+    Returns
+    -------
+    lambda sequence
+    """
+    def mysd(y):
+        return math.sqrt(sum((y - sum(y) / len(y)) ** 2) / len(y))
+
+    sx = x.apply(mysd)
+    sx = preprocessing.scale(x).T
+    sy = y.to_numpy()
+    sxy = sx * sy
+    sxy = sxy.T
+    # return sxy
+    lambda_max = max(abs(sxy.sum(axis=0)) / (
+                0.001 * x.shape[0]))  # 0.001 is the default smalles alpha value of glmnet for ridge (alpha = 0)
+    lambda_max_log = math.log(lambda_max)
+
+    log_step = (math.log(lambda_max) - math.log(lambda_max * lambda_min_ratio)) / (seq_len - 1)
+    log_seq = np.linspace(math.log(lambda_max), math.log(lambda_max * lambda_min_ratio), seq_len)
+    lambda_seq = np.exp(log_seq)
+    return lambda_seq
+
+
+########################
+# TODO decomp
+
+
+########################
+# TODO calibrateLift
+
+
+########################
+# TODO refit
+
+
+########################
+# TODO mmm
+
+
+########################
+# TODO robyn
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
