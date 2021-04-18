@@ -50,11 +50,11 @@ d = {
     "set_iter": 500,  # number of allowed iterations per trial. 500 is recommended
     "set_modTrainSize": 0.74,  # 0.74 means taking 74% of data to train and 30% to test the model.
     "set_hyperOptimAlgo": "DiscreteOnePlusOne",  # selected algorithm for Nevergrad, the gradient-free optimisation library https://facebookresearch.github.io/nevergrad/index.html
-    "set_trial": 40, # number of allowed iterations per trial. 40 is recommended without calibration, 100 with calibration.
+    "set_trial": 80, # number of allowed iterations per trial. 40 is recommended without calibration, 100 with calibration.
     ## Time estimation: with geometric adstock, 500 iterations * 40 trials and 6 cores, it takes less than 1 hour. Weibull takes at least twice as much time.
 
     # define ground truth (e.g. Geo test, FB Lift test, MTA etc.)
-    "activate_calibration": False,
+    "activate_calibration": True,
 }
 
 # lift calibration table

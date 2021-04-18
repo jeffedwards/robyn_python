@@ -19,13 +19,14 @@ import pandas as pd
 from scipy import stats
 # import weibull as weibull
 from sklearn import preprocessing
+from scipy.optimize import curve_fit
+from sklearn.linear_model import LinearRegression
 # from prophet import Prophet
 from scipy import stats
 import matplotlib.pyplot as plt
 
 from prophet import Prophet
 from datetime import datetime, timedelta
-
 
 
 
@@ -113,7 +114,7 @@ def plotTrainSize(plotTrainSize, d):
 
 
 
-def checkConditions(dt_transform, d, set_lift=None):
+def checkConditions(dt_transform, d: dict, set_lift=None):
     """
     check all conditions 1 by 1; terminate and raise errors if conditions are not met
     :param dt_transformations:
@@ -132,21 +133,16 @@ def checkConditions(dt_transform, d, set_lift=None):
 
     if len(d['set_mediaVarName']) != len(d['set_mediaVarSign']):
         raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
-    if not (set(d['set_prophetVarSign']).issubset({'positive", "negative", "default'}) and
-               set(d['set_baseVarSign']).issubset({'positive", "negative", "default'}) and
-               set(d['set_mediaVarSign']).issubset({'positive", "negative", "default'})):
+    if not (set(d['set_prophetVarSign']).issubset({"positive", "negative", "default"}) and
+            set(d['set_baseVarSign']).issubset({"positive", "negative", "default"}) and
+            set(d['set_mediaVarSign']).issubset({"positive", "negative", "default"})):
         raise ValueError('set_prophetVarSign, '
                          'set_baseVarSign & set_mediaVarSign must be "positive", "negative" or "default"')
     if d['activate_calibration']:
-        try:
-            set_lift
-        except NameError:
-            print('please provide lift result or set activate_calibration = FALSE')
-
-        if d['set_lift'].shape[0] == 0:
+        if set_lift.shape[0] == 0:
             raise ValueError('please provide lift result or set activate_calibration = FALSE')
         if (min(set_lift['liftStartDate']) < min(dt_transform['ds'])
-                or (max(set_lift['liftEndDate']) > max(dt_transform['ds']) + dayInterval - 1)):
+                or (max(set_lift['liftEndDate']) > max(dt_transform['ds']) + timedelta(days=d['dayInterval'] - 1))):
             raise ValueError(
                 'we recommend you to only use lift results conducted within your MMM input data date range')
 
@@ -160,10 +156,10 @@ def checkConditions(dt_transform, d, set_lift=None):
         num_hp_channel = 3
     else:
         num_hp_channel = 4
-    # need to add: check hyperparameter names
+    # TODO: check hyperparameter names?
     if dt_transform.isna().any(axis=None):
         raise ValueError('input data includes NaN')
-    if dt_transform.isinf().any(axis=None):
+    if np.isinf(dt_transform).any():
         raise ValueError('input data includes Inf')
 
     return d
@@ -192,6 +188,17 @@ def unit_format(x_in):
 
     return x_out
 
+
+def michaelis_menten(spend, vmax, km):
+    """
+
+    :param vmax:
+    :param spend:
+    :param km:
+    :return:
+    """
+
+    return vmax * spend/(km + spend)
 
 def inputWrangling(dt, dt_holiday, d, set_lift):
     dt_transform = dt.copy().reset_index()
@@ -248,19 +255,46 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
 
     ################################################################
     #### model reach metric from spend
-    # mediaCostFactor = pd.DataFrame(dt_transform[d['set_mediaSpendName']].sum(axis=0)/dt_transform[d['set_mediaVarName']].sum(axis=0))
-    # mediaCostFactor = mediaCostFactor.rename(index=d['set_mediaVarName'])
-    # costSelector = pd.Series(d['set_mediaVarName'])[pd.Series(d['set_mediaSpendName']) == pd.Series(d['set_mediaVarName'])]
+    mediaCostFactor = pd.DataFrame(dt_transform[d['set_mediaSpendName']].sum(axis=0), columns=['total_spend']).reset_index()
+    var_total = pd.DataFrame(dt_transform[d['set_mediaVarName']].sum(axis=0), columns=['total_var']).reset_index()
+    mediaCostFactor['mediaCostFactor'] = mediaCostFactor['total_spend']/var_total['total_var']
+    mediaCostFactor = mediaCostFactor.drop(columns=['total_spend'])
+    costSelector = pd.Series(d['set_mediaSpendName']) != pd.Series(d['set_mediaVarName'])
 
-    # if len(costSelector) != 0:
-    #    modNLSCollect = []
-    #    yhatCollect = []
-    #    plotNLSCollect = []
-    #    for i in range(mediaVarCount - 1):
-    #       dt_spendModInput = dt_transform[]
+    if len(costSelector) != 0:
+        modNLSCollect = []
+        yhatCollect = []
+        plotNLSCollect = []
+        for i in range(mediaVarCount - 1):
+            if costSelector[i]:
+                dt_spendModInput = pd.DataFrame(dt_transform.loc[:, d['set_mediaSpendName'][i]])
+                dt_spendModInput['reach'] = dt_transform.loc[:, d['set_mediaVarName'][i]]
+                dt_spendModInput.loc[dt_spendModInput[d['set_mediaSpendName'][i]] == 0, d['set_mediaSpendName'][i]] = 0.01
+                dt_spendModInput.loc[dt_spendModInput['reach'] == 0, 'reach'] = \
+                    dt_spendModInput[dt_spendModInput['reach'] == 0][d['set_mediaSpendName'][i]]/mediaCostFactor['mediaCostFactor'][i]
 
-    # d['mediaCostFactor'] = mediaCostFactor
-    # d['costSelector'] = costSelector
+                #Michaelis-Menten model
+                vmax = max(dt_spendModInput['reach'])/2
+                km = max(dt_spendModInput['reach'])
+                y = michaelis_menten(dt_spendModInput[d['set_mediaSpendName'][i]], vmax, km)
+                popt, pcov = curve_fit(michaelis_menten, dt_spendModInput[d['set_mediaSpendName'][i]], y)
+
+                yhatNLS = michaelis_menten(dt_spendModInput[d['set_mediaSpendName'][i]], *popt)
+
+                #linear model
+                lm = LinearRegression().fit(np.array(dt_spendModInput[d['set_mediaSpendName'][i]])
+                                            .reshape(-1, 1), np.array(dt_spendModInput['reach']).reshape(-1, 1))
+
+                # compare NLS & LM, takes LM if NLS fits worse
+                rsq_nls = 0
+                rsq_lm = 0
+                costSelector[i] = rsq_nls > rsq_lm
+        d['plotNLSCollect'] = plotNLSCollect
+        d['modNLSCollect'] = modNLSCollect
+        d['yhatNLSCollect'] = yhatNLSCollect
+
+    d['mediaCostFactor'] = mediaCostFactor
+    d['costSelector'] = costSelector
     # d['getSpendSum'] = getSpendSum
 
     ################################################################
