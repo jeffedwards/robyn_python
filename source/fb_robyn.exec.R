@@ -66,7 +66,7 @@ set_depVarType <- "revenue" # "revenue" or "conversion" are allowed
 
 activate_prophet <- T # Turn on or off the Prophet feature
 set_prophet <- c("trend", "season", "holiday") # "trend","season", "weekday", "holiday" are provided and case-sensitive. Recommended to at least keep Trend & Holidays
-set_prophetVarSign <- c("default","default", "default") # c("default", "positive", and "negative"). Recommend as default. Must be same length as set_prophet
+set_hyperBoundLocal <- c("default","default", "default") # c("default", "positive", and "negative"). Recommend as default. Must be same length as set_prophet
 
 activate_baseline <- T
 set_baseVarName <- c("competitor_sales_B") # typically competitors, price & promotion, temperature,  unemployment rate etc
