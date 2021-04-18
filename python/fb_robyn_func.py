@@ -28,7 +28,6 @@ from datetime import datetime, timedelta
 
 
 
-
 ########################################################################################################################
 # FUNCTIONS
 
@@ -113,7 +112,7 @@ def plotTrainSize(plotTrainSize, d):
 
 
 
-def checkConditions(dt_transform, d, set_lift=None):
+def checkConditions(dt_transform, d: dict, set_lift=None):
     """
     check all conditions 1 by 1; terminate and raise errors if conditions are not met
     :param dt_transformations:
@@ -132,21 +131,16 @@ def checkConditions(dt_transform, d, set_lift=None):
 
     if len(d['set_mediaVarName']) != len(d['set_mediaVarSign']):
         raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
-    if not (set(d['set_prophetVarSign']).issubset({'positive", "negative", "default'}) and
-               set(d['set_baseVarSign']).issubset({'positive", "negative", "default'}) and
-               set(d['set_mediaVarSign']).issubset({'positive", "negative", "default'})):
+    if not (set(d['set_prophetVarSign']).issubset({"positive", "negative", "default"}) and
+            set(d['set_baseVarSign']).issubset({"positive", "negative", "default"}) and
+            set(d['set_mediaVarSign']).issubset({"positive", "negative", "default"})):
         raise ValueError('set_prophetVarSign, '
                          'set_baseVarSign & set_mediaVarSign must be "positive", "negative" or "default"')
     if d['activate_calibration']:
-        try:
-            set_lift
-        except NameError:
-            print('please provide lift result or set activate_calibration = FALSE')
-
-        if d['set_lift'].shape[0] == 0:
+        if set_lift.shape[0] == 0:
             raise ValueError('please provide lift result or set activate_calibration = FALSE')
         if (min(set_lift['liftStartDate']) < min(dt_transform['ds'])
-                or (max(set_lift['liftEndDate']) > max(dt_transform['ds']) + dayInterval - 1)):
+                or (max(set_lift['liftEndDate']) > max(dt_transform['ds']) + timedelta(days=d['dayInterval'] - 1))):
             raise ValueError(
                 'we recommend you to only use lift results conducted within your MMM input data date range')
 
@@ -163,7 +157,7 @@ def checkConditions(dt_transform, d, set_lift=None):
     # need to add: check hyperparameter names
     if dt_transform.isna().any(axis=None):
         raise ValueError('input data includes NaN')
-    if dt_transform.isinf().any(axis=None):
+    if np.isinf(dt_transform).any():
         raise ValueError('input data includes Inf')
 
     return d
