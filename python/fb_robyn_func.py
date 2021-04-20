@@ -24,9 +24,11 @@ from sklearn.linear_model import LinearRegression
 # from prophet import Prophet
 from scipy import stats
 import matplotlib.pyplot as plt
+from sklearn.metrics import r2_score
 
 from prophet import Prophet
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 
 
@@ -246,7 +248,7 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
         intervalType = 'day'
     elif dayInterval == 7:
         intervalType = 'week'
-    elif dayInterval >= 28 and dayInterval <= 31:
+    elif 28 <= dayInterval <= 31:
         intervalType = 'month'
     else:
         raise ValueError('input data has to be daily, weekly or monthly')
@@ -262,7 +264,7 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
     costSelector = pd.Series(d['set_mediaSpendName']) != pd.Series(d['set_mediaVarName'])
 
     if len(costSelector) != 0:
-        modNLSCollect = []
+        modNLSCollect = defaultdict()
         yhatCollect = []
         plotNLSCollect = []
         for i in range(mediaVarCount - 1):
@@ -274,28 +276,47 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
                     dt_spendModInput[dt_spendModInput['reach'] == 0][d['set_mediaSpendName'][i]]/mediaCostFactor['mediaCostFactor'][i]
 
                 #Michaelis-Menten model
-                vmax = max(dt_spendModInput['reach'])/2
-                km = max(dt_spendModInput['reach'])
-                y = michaelis_menten(dt_spendModInput[d['set_mediaSpendName'][i]], vmax, km)
-                popt, pcov = curve_fit(michaelis_menten, dt_spendModInput[d['set_mediaSpendName'][i]], y)
+                #vmax = max(dt_spendModInput['reach'])/2
+                #km = max(dt_spendModInput['reach'])
+                #y = michaelis_menten(dt_spendModInput[d['set_mediaSpendName'][i]], vmax, km)
+                popt, pcov = curve_fit(michaelis_menten, dt_spendModInput[d['set_mediaSpendName'][i]], dt_spendModInput['reach'])
 
                 yhatNLS = michaelis_menten(dt_spendModInput[d['set_mediaSpendName'][i]], *popt)
+                #nls_pred = yhatNLS.predict(np.array(dt_spendModInput[d['set_mediaSpendName'][i]]).reshape(-1, 1))
 
                 #linear model
                 lm = LinearRegression().fit(np.array(dt_spendModInput[d['set_mediaSpendName'][i]])
                                             .reshape(-1, 1), np.array(dt_spendModInput['reach']).reshape(-1, 1))
+                lm_pred = lm.predict(np.array(dt_spendModInput[d['set_mediaSpendName'][i]]).reshape(-1, 1))
 
                 # compare NLS & LM, takes LM if NLS fits worse
-                rsq_nls = 0
-                rsq_lm = 0
+                rsq_nls = r2_score(dt_spendModInput['reach'], yhatNLS)
+                rsq_lm = r2_score(dt_spendModInput['reach'], lm_pred)
                 costSelector[i] = rsq_nls > rsq_lm
-        d['plotNLSCollect'] = plotNLSCollect
-        d['modNLSCollect'] = modNLSCollect
-        d['yhatNLSCollect'] = yhatNLSCollect
+
+                modNLSCollect[d['set_mediaSpendName'][i]] = {'vmax': popt[0], 'km': popt[1], 'rsq_lm': rsq_lm
+                                                             , 'rsq_nls': rsq_nls, 'coef_lm': lm.coef_}
+
+                yhat_dt = pd.DataFrame(dt_spendModInput['reach']).rename(columns={'reach': 'y'})
+                yhat_dt['channel'] = d['set_mediaVarName'][i]
+                yhat_dt['x'] = dt_spendModInput[d['set_mediaSpendName'][i]]
+                yhat_dt['yhat'] = yhatNLS if costSelector[i] else lm_pred
+                yhat_dt['models'] = 'nls' if costSelector[i] else 'lm'
+                yhatCollect.append(yhat_dt)
+
+                # TODO: generate plots
+
+
+    d['plotNLSCollect'] = plotNLSCollect
+    d['modNLSCollect'] = modNLSCollect
+    #d['yhatNLSCollect'] = yhatNLSCollect
+
+    getSpendSum = pd.DataFrame(dt_transform[d['set_mediaSpendName']].sum(axis=0),
+                                   columns=['total_spend']).reset_index()
 
     d['mediaCostFactor'] = mediaCostFactor
     d['costSelector'] = costSelector
-    # d['getSpendSum'] = getSpendSum
+    d['getSpendSum'] = getSpendSum
 
     ################################################################
     #### clean & aggregate data
