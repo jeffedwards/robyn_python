@@ -116,7 +116,7 @@ def plotTrainSize(plotTrainSize, d):
 
 
 
-def checkConditions(dt_transform, d: dict, set_lift=None):
+def checkConditions(dt_transform, d: dict, set_hyperBoundLocal, set_lift=None):
     """
     check all conditions 1 by 1; terminate and raise errors if conditions are not met
     :param dt_transformations:
@@ -159,6 +159,8 @@ def checkConditions(dt_transform, d: dict, set_lift=None):
     else:
         num_hp_channel = 4
     # TODO: check hyperparameter names?
+    if set(gethypernames(d)) != set(list(set_hyperBoundLocal.keys())):
+        raise ValueError('set_hyperBoundLocal has incorrect hyperparameters')
     if dt_transform.isna().any(axis=None):
         raise ValueError('input data includes NaN')
     if np.isinf(dt_transform).any():
@@ -202,7 +204,7 @@ def michaelis_menten(spend, vmax, km):
 
     return vmax * spend/(km + spend)
 
-def inputWrangling(dt, dt_holiday, d, set_lift):
+def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
     dt_transform = dt.copy().reset_index()
     dt_transform = dt_transform.rename({d['set_dateVarName']: 'ds'}, axis=1)
     dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
@@ -311,8 +313,7 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
     d['modNLSCollect'] = modNLSCollect
     #d['yhatNLSCollect'] = yhatNLSCollect
 
-    getSpendSum = pd.DataFrame(dt_transform[d['set_mediaSpendName']].sum(axis=0),
-                                   columns=['total_spend']).reset_index()
+    getSpendSum = pd.DataFrame(dt_transform[d['set_mediaSpendName']].sum(axis=0), columns=['total_spend']).T
 
     d['mediaCostFactor'] = mediaCostFactor
     d['costSelector'] = costSelector
@@ -320,12 +321,12 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
 
     ################################################################
     #### clean & aggregate data
-    #all_name = list(
-    #    {'ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName'], d['set_keywordsVarName'],
-    #     d['set_mediaSpendName']})
-    #all_mod_name = ['ds', 'depVar', d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
-    #if all_name != all_mod_name:
-    #    raise ValueError('Input variables must have unique names')
+    all_name = [['ds'], ['depVar'], d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
+    all_name = set([item for sublist in all_name for item in sublist])
+    #all_mod_name = [['ds'], ['depVar'], d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
+    #all_mod_name = [item for sublist in all_mod_name for item in sublist]
+    if len(all_name) != len(set(all_name)):
+        raise ValueError('Input variables must have unique names')
 
     ## transform all factor variables
     try:
@@ -412,7 +413,7 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
     ################################################################
     #### Finalize input
 
-    checkConditions(dt_transform, d, set_lift)
+    checkConditions(dt_transform, d,set_hyperBoundLocal, set_lift)
 
     return dt_transform, d
 
@@ -616,58 +617,58 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 ########################
 # TODO calibrateLift
 
-def calibrateLift(xDecompOut, xDecompOut.scaled, decompOutAgg, set_lift):
-    """
-
-    :param xDecompOut:
-    :param xDecompOut.scaled:
-    :param decompOutAgg:
-    :param set_lift:
-    :return:
-    """
-
-    lift_channels = list(set_lift.channel)
-    check_set_lift = all(item in set_mediaVarName for item in lift_channels)
-    if check_set_lift:
-        getLiftMedia = list(set(lift_channels))
-        getDecompVec = xDecompOut
-    else:
-        exit("set_lift channels must have media variable")
-
-    # loop all lift input
-    liftCollect = pd.DataFrame(columns = ['liftMedia', 'liftStart', 'liftEnd' ,
-                                          'liftAbs', 'decompAbsScaled', 'dependent'])
-    for m in getLiftMedia: # loop per lift channel
-        liftWhich = list(set_lift.loc[set_lift.channel.isin([m])].index)
-        liftCollect2 = pd.DataFrame(columns = ['liftMedia', 'liftStart', 'liftEnd' ,
-                                               'liftAbs', 'decompAbsScaled', 'dependent'])
-        for lw in liftWhich: # loop per lift test per channel
-            # get lift period subset
-            liftStart = set_lift['liftStartDate'].iloc[lw]
-            liftEnd = set_lift['liftEndDate'].iloc[lw]
-            liftAbs = set_lift['liftAbs'].iloc[lw]
-            liftPeriodVec = getDecompVec[['ds', m]][(getDecompVec.ds >= liftStart) & (getDecompVec.ds <= liftEnd)]
-            liftPeriodVecDependent = getDecompVec[['ds', 'y']][(getDecompVec.ds >= liftStart) & (getDecompVec.ds <= liftEnd)]
-
-            # scale decomp
-            mmmDays = len(liftPeriodVec)*7
-            liftDays = abs((liftEnd - liftStart).days) + 1
-            y_hatLift = getDecompVec['y_hat'].sum() # total predicted sales
-            x_decompLift = liftPeriodVec.iloc[:1].sum()
-            x_decompLiftScaled = x_decompLift / mmmDays * liftDays
-            y_scaledLift = liftPeriodVecDependent['y'].sum() / mmmDays * liftDays
-
-            # output
-            list_to_append = [[getLiftMedia[m], liftStart, liftEnd, liftAbs, x_decompLiftScaled, y_scaledLift]]
-            liftCollect2 = liftCollect2.append(pd.DataFrame(list_to_append,
-                                                            columns = ['liftMedia', 'liftStart', 'liftEnd' ,
-                                                                       'liftAbs', 'decompAbsScaled', 'dependent'],
-                                                            ignore_index = True))
-        liftCollect = liftCollect.append(liftCollect2, ignore_index = True)
-    #get mape_lift
-    liftCollect['mape_lift'] = abs((liftCollect['decompAbsScaled'] - liftCollect['liftAbs']) / liftCollect['liftAbs'])
-
-    return liftCollect
+# def calibrateLift(xDecompOut, xDecompOut.scaled, decompOutAgg, set_lift):
+#     """
+#
+#     :param xDecompOut:
+#     :param xDecompOut.scaled:
+#     :param decompOutAgg:
+#     :param set_lift:
+#     :return:
+#     """
+#
+#     lift_channels = list(set_lift.channel)
+#     check_set_lift = all(item in set_mediaVarName for item in lift_channels)
+#     if check_set_lift:
+#         getLiftMedia = list(set(lift_channels))
+#         getDecompVec = xDecompOut
+#     else:
+#         exit("set_lift channels must have media variable")
+#
+#     # loop all lift input
+#     liftCollect = pd.DataFrame(columns = ['liftMedia', 'liftStart', 'liftEnd' ,
+#                                           'liftAbs', 'decompAbsScaled', 'dependent'])
+#     for m in getLiftMedia: # loop per lift channel
+#         liftWhich = list(set_lift.loc[set_lift.channel.isin([m])].index)
+#         liftCollect2 = pd.DataFrame(columns = ['liftMedia', 'liftStart', 'liftEnd' ,
+#                                                'liftAbs', 'decompAbsScaled', 'dependent'])
+#         for lw in liftWhich: # loop per lift test per channel
+#             # get lift period subset
+#             liftStart = set_lift['liftStartDate'].iloc[lw]
+#             liftEnd = set_lift['liftEndDate'].iloc[lw]
+#             liftAbs = set_lift['liftAbs'].iloc[lw]
+#             liftPeriodVec = getDecompVec[['ds', m]][(getDecompVec.ds >= liftStart) & (getDecompVec.ds <= liftEnd)]
+#             liftPeriodVecDependent = getDecompVec[['ds', 'y']][(getDecompVec.ds >= liftStart) & (getDecompVec.ds <= liftEnd)]
+#
+#             # scale decomp
+#             mmmDays = len(liftPeriodVec)*7
+#             liftDays = abs((liftEnd - liftStart).days) + 1
+#             y_hatLift = getDecompVec['y_hat'].sum() # total predicted sales
+#             x_decompLift = liftPeriodVec.iloc[:1].sum()
+#             x_decompLiftScaled = x_decompLift / mmmDays * liftDays
+#             y_scaledLift = liftPeriodVecDependent['y'].sum() / mmmDays * liftDays
+#
+#             # output
+#             list_to_append = [[getLiftMedia[m], liftStart, liftEnd, liftAbs, x_decompLiftScaled, y_scaledLift]]
+#             liftCollect2 = liftCollect2.append(pd.DataFrame(list_to_append,
+#                                                             columns = ['liftMedia', 'liftStart', 'liftEnd' ,
+#                                                                        'liftAbs', 'decompAbsScaled', 'dependent'],
+#                                                             ignore_index = True))
+#         liftCollect = liftCollect.append(liftCollect2, ignore_index = True)
+#     #get mape_lift
+#     liftCollect['mape_lift'] = abs((liftCollect['decompAbsScaled'] - liftCollect['liftAbs']) / liftCollect['liftAbs'])
+#
+#     return liftCollect
 
 ########################
 # TODO refit

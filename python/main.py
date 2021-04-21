@@ -57,6 +57,30 @@ d = {
     "activate_calibration": True,
 }
 
+#### tune channel hyperparameters bounds
+
+#### Guidance to set hypereparameter bounds ####
+
+## 1. get correct hyperparameter names:
+local_name = f.getHyperNames() # names in set_hyperBoundLocal must equal names in local_name, case sensitive
+
+## 2. get guidance for setting hyperparameter bounds:
+# For geometric adstock, use theta, alpha & gamma. For weibull adstock, use shape, scale, alpha, gamma
+# theta: In geometric adstock, theta is decay rate. guideline for usual media genre: TV c(0.3, 0.8), OOH/Print/Radio c(0.1, 0.4), digital c(0, 0.3)
+# shape: In weibull adstock, shape controls the decay shape. Recommended c(0.0001, 2). The larger, the more S-shape. The smaller, the more L-shape
+# scale: In weibull adstock, scale controls the decay inflexion point. Very conservative recommended bounce c(0, 0.1), becausee scale can increase adstocking half-life greaetly
+# alpha: In s-curve transformation with hill function, alpha controls the shape between exponential and s-shape. Recommended c(0.5, 3). The larger the alpha, the more S-shape. The smaller, the more C-shape
+# gamma: In s-curve transformation with hill function, gamma controls the inflexion point. Recommended bounce c(0.3, 1). The larger the gamma, the later the inflection point in the response curve
+
+## 3. set each hyperparameter bounds. They either contains two values e.g. c(0, 0.5), or only one value (in which case you've "fixed" that hyperparameter)
+set_hyperBoundLocal = {
+    'facebook_I_alphas': [0.5, 3],  # example bounds for alpha
+    'facebook_I_gammas': [0.3, 1],  # example bounds for gamma
+    'facebook_I_thetas': [0, 0.3],  # example bounds for theta
+    #'facebook_I_shapes' : [0.0001, 2],  # example bounds for shape
+    #'facebook_I_scales' : [0, 0.1]
+    }
+
 # lift calibration table
 set_lift = pd.DataFrame({'channel': ["facebook_I",  "tv_S", "facebook_I"],
                          'liftStartDate': ["2018-05-01", "2017-11-27", "2018-07-01"],
