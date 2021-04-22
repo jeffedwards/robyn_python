@@ -616,7 +616,7 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 ########################
 # TODO calibrateLift
 
-def calibrateLift(xDecompOut, decompOutAgg, set_lift):
+def calibrateLift(xDecompOut, decompOutAgg, set_lift, d):
     """
 
     :param xDecompOut:
@@ -627,7 +627,7 @@ def calibrateLift(xDecompOut, decompOutAgg, set_lift):
     """
 
     lift_channels = list(set_lift.channel)
-    check_set_lift = all(item in set_mediaVarName for item in lift_channels)
+    check_set_lift = all(item in d['set_mediaVarName'] for item in lift_channels)
     if check_set_lift:
         getLiftMedia = list(set(lift_channels))
         getDecompVec = xDecompOut
