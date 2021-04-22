@@ -418,7 +418,7 @@ def inputWrangling(dt, dt_holiday, d, set_lift):
 
 
 
-def gethypernames(adstock, set_mediaVarName):
+def gethypernames(d):
     """
     Parameters
     ----------
@@ -616,7 +616,7 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 ########################
 # TODO calibrateLift
 
-def calibrateLift(xDecompOut, xDecompOut.scaled, decompOutAgg, set_lift):
+def calibrateLift(xDecompOut, decompOutAgg, set_lift):
     """
 
     :param xDecompOut:
