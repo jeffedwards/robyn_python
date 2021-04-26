@@ -35,6 +35,7 @@ from collections import defaultdict
 ########################################################################################################################
 # FUNCTIONS
 
+
 def initiate_dictionary():
     """
     Creates a dictionary with variables that are set or updated withing functions
@@ -46,7 +47,6 @@ def initiate_dictionary():
     }
 
     return dict_vars
-
 
 
 def plotTrainSize(plotTrainSize, d):
@@ -113,7 +113,6 @@ def plotTrainSize(plotTrainSize, d):
 
 ########################
 # TODO plotResponseCurves
-
 
 
 def checkConditions(dt_transform, d: dict, set_hyperBoundLocal, set_lift=None):
@@ -204,6 +203,7 @@ def michaelis_menten(spend, vmax, km):
 
     return vmax * spend/(km + spend)
 
+
 def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
     dt_transform = dt.copy().reset_index()
     dt_transform = dt_transform.rename({d['set_dateVarName']: 'ds'}, axis=1)
@@ -215,7 +215,6 @@ def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
         pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
     except ValueError:
         print('input date variable should have format "yyyy-mm-dd"')
-
 
     # check variable existence
     if not d['activate_prophet']:
@@ -564,7 +563,7 @@ def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, g
     return x_out
 
 
-def rsq(true,predicted):
+def rsq(true, predicted):
     """
     ----------
     Parameters
@@ -673,6 +672,155 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 ########################
 # TODO refit
 
+def refit(x_train: np.array(), y_train: np.array(), lambdas, lower_limits, upper_limits):
+    """
+
+    :param x_train: numpy array; rows = record; columns = betas
+    :param y_train: numpy array (1xn) of outcomes
+    :param lambdas:
+    :param lower_limits:
+    :param upper_limits:
+    :return:
+    """
+
+    # TODO delete this scratch work when done
+    """
+    R-Variables
+    dt_transform <- dt_input
+    dt_train <- dt_transform[trainStartWhich:nrow(dt_transform), set_mediaVarName, with =F]
+    y_train <- dt_train$depVar
+    
+    depVar <- 'revenue'
+    x_train <- model.matrix(depVar ~., dt_train)[, -1]
+    
+    lower.limits <- c(); 
+    upper.limits <- c()
+    
+    
+    PYTHON
+    lower_limits = None
+    upper_limits = None
+    """
+
+    import numpy as np
+    # n_samples, n_features = 10, 5
+    # rng = np.random.RandomState(0)
+    # y = rng.randn(n_samples)
+    # x = rng.randn(n_samples, n_features)
+    y = np.array([1, 0, 0, 1])
+    x = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+
+    # GREAT PACKAGE, BUT REQUIRES LINUX
+    # https://glmnet-python.readthedocs.io/en/latest/glmnet_vignette.html
+    # https://web.stanford.edu/~hastie/glmnet/glmnet_alpha.html#intro
+    # https://pypi.org/project/glmnet-python/
+    # import glmnet_python
+    # from glmnet import glmnet
+
+    # from sklearn.linear_model import Ridge
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html#sklearn.linear_model.Ridge
+    # https://scikit-learn.org/stable/modules/linear_model.html#ridge-regression-and-classification
+    # https://stats.stackexchange.com/questions/160096/what-are-the-differences-between-ridge-regression-using-rs-glmnet-and-pythons
+    # NO UPPER AND LOWER LIMITS PASSED INTO RIDGE REGRESSION.
+    # mod = Ridge(alpha=1,
+    #             fit_intercept=True,
+    #             normalize=False,
+    #             tol=1e-3,
+    #             solver='auto',
+    #             random_state=None)
+    # mod.fit(X=x, y=y)
+    # mod.intercept_
+
+    # from pyglmnet import GLM
+    # NO UPPER AND LOWER LIMITS PASSED INTO RIDGE REGRESSION.
+    # glm = GLM(distr='poisson',
+    #           alpha=0,
+    #           Tau=None,
+    #           group=None,
+    #           reg_lambda=0.1,
+    #           solver='batch-gradient',
+    #           learning_rate=2e-1,
+    #           max_iter=1000,
+    #           tol=1e-6,
+    #           eta=2.0,
+    #           score_metric='deviance',
+    #           fit_intercept=True,
+    #           random_state=0,
+    #           callback=None,
+    #           verbose=False)
+    # glm.get_params()
+
+    # https://anaconda.org/conda-forge/glmnet_py
+    # import glmnet_python
+    # might require Linux
+
+    # R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET
+    # https://rpy2.github.io/
+    # https://github.com/conda-forge/r-glmnet-feedstock/issues/1
+    # conda install -c conda-forge rpy2
+    # conda install -c conda-forge r r-essentials
+    # conda install -c conda-forge r glmnet
+
+    # IMPORT R glmnet
+    # for testing #todo get rid of the testing parameters
+    x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    y_train = np.array([1, 0, 0, 1])
+    lower_limits = [10, 10, 10, 10]
+    upper_limits = [0, 0, 0, 0]
+    import rpy2
+    from rpy2.robjects.packages import importr
+    from rpy2.robjects import numpy2ri
+    numpy2ri.activate()
+    glmnet = importr('glmnet')
+    # numpy2ri.deactivate()
+    glmnet(x_train, y_train)
+
+    import numpy as np
+    from rpy2.robjects import r
+    data = np.random.random((10, 10))
+
+    r.heatmap(data)
+
+    import rpy2.robjects as ro
+    from rpy2.robjects import numpy2ri
+    ro.conversion.py2ri = numpy2ri
+
+    mod = glmnet(
+        x=x_train,
+        y=y_train
+        # family="gaussian",
+        # alpha=0,  # 0 for ridge regression
+        # lambda=lambdas,
+        # lower_limits=lower_limits,
+        # upper_limits=upper_limits,
+    )
+    glmnet(x_train, y_train)
+    glmnet([[0, 0], [0, 0], [1, 1]], [0, .1, 1])
+
+#Import necessary packages
+
+import rpy2.interactive as r
+importr("utils")
+ryp2.
+r.packages.utils.install_packages('forecast')
+
+import rpy2.robjects as robjects
+from rpy2.robjects.packages import importr
+from rpy2.robjects import pandas2ri
+#Must be activated
+pandas2ri.activate()
+time_series=robjects.r('ts')
+
+import rpy2.robjects as ro
+package_name = "forecast"
+try:
+    pkg = importr(package_name)
+except:
+    ro.r(f'install.packages("{package_name}")')
+    pkg = importr(package_name)
+pkg
+
+forecast_package=importr('forecast')
 
 ########################
 # TODO mmm

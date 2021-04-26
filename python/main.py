@@ -22,9 +22,12 @@ from python import fb_robyn_func as f
 #path = "C:\\Users\\anuragjoshi\Documents\\01 Projects\\04 MMM\Robyn-master2.0\\source\\"
 #path = "C:\\pytasks\\202103_Robyn_translation\\robyn_python\\source\\" #delete later. Tmp line for debugging (David)
 path = "/Users/nuochen/Documents/Robyn/robyn_python/source/" #(Nuo debugging)
+# TODO why are we setting the path, shouldn't it be relative pathing
 
-df = pd.read_csv(path + "de_simulated_data.csv").set_index('DATE')
-dt_holidays = pd.read_csv(path + "holidays.csv")
+# df = pd.read_csv(path + "de_simulated_data.csv").set_index('DATE')
+df = pd.read_csv('source/de_simulated_data.csv').set_index('DATE')
+# dt_holidays = pd.read_csv(path + "holidays.csv")
+dt_holidays = pd.read_csv('source/holidays.csv')
 
 # Create dictionary to initiate parameters
 d = {
