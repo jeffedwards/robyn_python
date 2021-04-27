@@ -799,28 +799,28 @@ def refit(x_train: np.array(), y_train: np.array(), lambdas, lower_limits, upper
 
 #Import necessary packages
 
-import rpy2.interactive as r
-importr("utils")
-ryp2.
-r.packages.utils.install_packages('forecast')
-
-import rpy2.robjects as robjects
-from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
-#Must be activated
-pandas2ri.activate()
-time_series=robjects.r('ts')
-
-import rpy2.robjects as ro
-package_name = "forecast"
-try:
-    pkg = importr(package_name)
-except:
-    ro.r(f'install.packages("{package_name}")')
-    pkg = importr(package_name)
-pkg
-
-forecast_package=importr('forecast')
+# import rpy2.interactive as r
+# importr("utils")
+# ryp2.
+# r.packages.utils.install_packages('forecast')
+#
+# import rpy2.robjects as robjects
+# from rpy2.robjects.packages import importr
+# from rpy2.robjects import pandas2ri
+# #Must be activated
+# pandas2ri.activate()
+# time_series=robjects.r('ts')
+#
+# import rpy2.robjects as ro
+# package_name = "forecast"
+# try:
+#     pkg = importr(package_name)
+# except:
+#     ro.r(f'install.packages("{package_name}")')
+#     pkg = importr(package_name)
+# pkg
+#
+# forecast_package=importr('forecast')
 
 ########################
 # TODO mmm
