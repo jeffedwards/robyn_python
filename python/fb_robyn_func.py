@@ -672,12 +672,12 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 ########################
 # TODO refit
 
-def refit(x_train: np.array(), y_train: np.array(), lambdas, lower_limits, upper_limits):
+def refit(x_train: np.array(), y_train: np.array(), lambda_, lower_limits, upper_limits):
     """
 
     :param x_train: numpy array; rows = record; columns = betas
     :param y_train: numpy array (1xn) of outcomes
-    :param lambdas:
+    :param lambda_:
     :param lower_limits:
     :param upper_limits:
     :return:
@@ -763,64 +763,83 @@ def refit(x_train: np.array(), y_train: np.array(), lambdas, lower_limits, upper
 
     # IMPORT R glmnet
     # for testing #todo get rid of the testing parameters
+    import numpy as np
     x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
     y_train = np.array([1, 0, 0, 1])
     lower_limits = [10, 10, 10, 10]
     upper_limits = [0, 0, 0, 0]
+    lambda_ = 1
+
+
     import rpy2
+    import pandas as pd
     from rpy2.robjects.packages import importr
-    from rpy2.robjects import numpy2ri
+    from rpy2.robjects import numpy2ri, pandas2ri
+    import rpy2.robjects as ro
+    from rpy2.robjects.conversion import localconverter
+    # from rpy2.robjects import globalenv
+
     numpy2ri.activate()
     glmnet = importr('glmnet')
+    base = importr('base')
     # numpy2ri.deactivate()
-    glmnet(x_train, y_train)
 
-    import numpy as np
-    from rpy2.robjects import r
-    data = np.random.random((10, 10))
+    x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    x_train_pd = pd.DataFrame(x_train)
+    type(x_train_pd)
+    pandas2ri.py2ri(x_train_pd)
+    with localconverter(ro.default_converter + pandas2ri.converter):
+        x_train_pd_r = ro.conversion.py2rpy(x_train_pd)
+    type(x_train_pd_r)
 
-    r.heatmap(data)
+    # x_train_nr, x_train_nc = x_train.shape
+    # x_train_r = ro.r.matrix(x_train, nrow=x_train_nr, ncol=x_train_nc)
+    # type(x_train_r)
 
-    import rpy2.robjects as ro
-    from rpy2.robjects import numpy2ri
-    ro.conversion.py2ri = numpy2ri
+    y_train = np.array([1, 0, 0, 1])
+    y_train_r = ro.vectors.FloatVector(y_train)
+    type(y_train_r)
+
+    stats = importr('stats')
+    n=6
+    stats.rnorm(n)
+
+
+    r_f = ro.globalenv['f']
+    rf_model = (r_f(rtrain))
+
+
+    ro.r('''
+        f <- function () {
+            library(glmnet)
+            n <- 2
+            p <- 3
+            real_p <- 2
+            
+            x <- matrix(rnorm(n*p), nrow=n, ncol=p)
+            y <- apply(x[,1:real_p],1, sum) + rnorm(n)
+            
+            mod <- glmnet(
+                x=x,
+                y=y,
+                family="gaussian",
+                alpha=0
+                )
+        }
+    ''')
+    r_f = ro.globalenv['f']
+    r_f()
+    # https://rpy2.github.io/doc/v3.0.x/html/robjects_functions.html
+    # https://stackoverflow.com/questions/45325274/calling-r-library-randomforest-from-python-using-rpy2
+
 
     mod = glmnet(
-        x=x_train,
-        y=y_train
-        # family="gaussian",
-        # alpha=0,  # 0 for ridge regression
-        # lambda=lambdas,
-        # lower_limits=lower_limits,
-        # upper_limits=upper_limits,
-    )
-    glmnet(x_train, y_train)
-    glmnet([[0, 0], [0, 0], [1, 1]], [0, .1, 1])
+        x=x_train_pd_r,
+        y=y_train_r,
+        family="gaussian",
+        alpha=0
+        )
 
-#Import necessary packages
-
-# import rpy2.interactive as r
-# importr("utils")
-# ryp2.
-# r.packages.utils.install_packages('forecast')
-#
-# import rpy2.robjects as robjects
-# from rpy2.robjects.packages import importr
-# from rpy2.robjects import pandas2ri
-# #Must be activated
-# pandas2ri.activate()
-# time_series=robjects.r('ts')
-#
-# import rpy2.robjects as ro
-# package_name = "forecast"
-# try:
-#     pkg = importr(package_name)
-# except:
-#     ro.r(f'install.packages("{package_name}")')
-#     pkg = importr(package_name)
-# pkg
-#
-# forecast_package=importr('forecast')
 
 ########################
 # TODO mmm
