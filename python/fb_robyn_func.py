@@ -771,76 +771,48 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_, lower_limits, upper
     lambda_ = 1
 
 
-    import rpy2
-    import pandas as pd
     from rpy2.robjects.packages import importr
     from rpy2.robjects import numpy2ri, pandas2ri
-    import rpy2.robjects as ro
-    from rpy2.robjects.conversion import localconverter
-    # from rpy2.robjects import globalenv
 
     numpy2ri.activate()
     glmnet = importr('glmnet')
-    base = importr('base')
-    # numpy2ri.deactivate()
 
-    x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
-    x_train_pd = pd.DataFrame(x_train)
-    type(x_train_pd)
-    pandas2ri.py2ri(x_train_pd)
-    with localconverter(ro.default_converter + pandas2ri.converter):
-        x_train_pd_r = ro.conversion.py2rpy(x_train_pd)
-    type(x_train_pd_r)
-
-    # x_train_nr, x_train_nc = x_train.shape
-    # x_train_r = ro.r.matrix(x_train, nrow=x_train_nr, ncol=x_train_nc)
-    # type(x_train_r)
-
-    y_train = np.array([1, 0, 0, 1])
-    y_train_r = ro.vectors.FloatVector(y_train)
-    type(y_train_r)
-
-    stats = importr('stats')
-    n=6
-    stats.rnorm(n)
-
-
-    r_f = ro.globalenv['f']
-    rf_model = (r_f(rtrain))
-
-
-    ro.r('''
-        f <- function () {
-            library(glmnet)
-            n <- 2
-            p <- 3
-            real_p <- 2
-            
-            x <- matrix(rnorm(n*p), nrow=n, ncol=p)
-            y <- apply(x[,1:real_p],1, sum) + rnorm(n)
-            
-            mod <- glmnet(
-                x=x,
-                y=y,
-                family="gaussian",
-                alpha=0
-                )
-        }
-    ''')
-    r_f = ro.globalenv['f']
-    r_f()
     # https://rpy2.github.io/doc/v3.0.x/html/robjects_functions.html
     # https://stackoverflow.com/questions/45325274/calling-r-library-randomforest-from-python-using-rpy2
+    # import rpy2.robjects as ro
+    # from rpy2.robjects.conversion import localconverter
+    # from rpy2.robjects import globalenv
+    # x_train_nr, x_train_nc = x_train.shape
+    # x_train_r = ro.r.matrix(x_train, nrow=x_train_nr, ncol=x_train_nc)
+    # with localconverter(ro.default_converter + pandas2ri.converter):
+    #     x_train_pd_r = ro.conversion.py2rpy(x_train_pd)
+    # type(x_train_pd_r)
+    # y_train = np.array([1, 0, 0, 1])
+    # y_train_r = ro.vectors.FloatVector(y_train)
+    # ro.r('''
+    #         f <- function (x_, y_) {
+    #             library(glmnet)
+    #
+    #             mod <- glmnet(
+    #                 x=x_,
+    #                 y=y_,
+    #                 family="gaussian",
+    #                 alpha=0
+    #                 )
+    #         }
+    #     ''')
+    # r_f = ro.globalenv['f']
+    # test = r_f(x_=x_train, y_=y_train)
+    #
+    # ro.r('''
+    #     g <- function(model) {
+    #         coef(model)[1]
+    #     }
+    # ''')
+    # r_g = ro.globalenv['g']
+    # r_g(model=test)
 
-
-    mod = glmnet(
-        x=x_train_pd_r,
-        y=y_train_r,
-        family="gaussian",
-        alpha=0
-        )
-
-
+    glmnet.glmnet(x_train, y_train, alpha=1, family='gaussian')
 ########################
 # TODO mmm
 
