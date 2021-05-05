@@ -672,43 +672,29 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 ########################
 # TODO refit
 
-def refit(x_train: np.array(), y_train: np.array(), lambda_, lower_limits, upper_limits):
+def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: list, upper_limits: list):
     """
 
     :param x_train: numpy array; rows = record; columns = betas
+        e.g. np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
     :param y_train: numpy array (1xn) of outcomes
-    :param lambda_:
+        e.g. np.array([1, 0, 0, 1])
+    :param lambda_: expects integer
+        e.g. 1
     :param lower_limits:
+        e.g. [0, 0, 0, 0]
     :param upper_limits:
-    :return:
+        e.g. [10, 10, 10, 10]
+    :return: dictionary of model outputs including rsq_train, nrmse_train, coefs, y_pred, model
     """
 
-    # TODO delete this scratch work when done
-    """
-    R-Variables
-    dt_transform <- dt_input
-    dt_train <- dt_transform[trainStartWhich:nrow(dt_transform), set_mediaVarName, with =F]
-    y_train <- dt_train$depVar
-    
-    depVar <- 'revenue'
-    x_train <- model.matrix(depVar ~., dt_train)[, -1]
-    
-    lower.limits <- c(); 
-    upper.limits <- c()
-    
-    
-    PYTHON
-    lower_limits = None
-    upper_limits = None
-    """
-
-    import numpy as np
-    # n_samples, n_features = 10, 5
-    # rng = np.random.RandomState(0)
-    # y = rng.randn(n_samples)
-    # x = rng.randn(n_samples, n_features)
-    y = np.array([1, 0, 0, 1])
-    x = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    # # FOR TESTING #TODO GET RID OF THE TESTING PARAMETERS
+    # import numpy as np
+    # x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    # y_train = np.array([1, 0, 0, 1])
+    # upper_limits = [10, 10, 10, 10]
+    # lower_limits = [0, 0, 0, 0]
+    # lambda_ = 1
 
     # GREAT PACKAGE, BUT REQUIRES LINUX
     # https://glmnet-python.readthedocs.io/en/latest/glmnet_vignette.html
@@ -717,6 +703,7 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_, lower_limits, upper
     # import glmnet_python
     # from glmnet import glmnet
 
+    # WORKS BUT DOES NOT ALLOW LIMITS TO BE PASSED IN
     # from sklearn.linear_model import Ridge
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html#sklearn.linear_model.Ridge
     # https://scikit-learn.org/stable/modules/linear_model.html#ridge-regression-and-classification
@@ -731,6 +718,7 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_, lower_limits, upper
     # mod.fit(X=x, y=y)
     # mod.intercept_
 
+    # WORKS BUT DOES NOT ALLOW LIMITS TO BE PASSED IN
     # from pyglmnet import GLM
     # NO UPPER AND LOWER LIMITS PASSED INTO RIDGE REGRESSION.
     # glm = GLM(distr='poisson',
@@ -750,10 +738,6 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_, lower_limits, upper
     #           verbose=False)
     # glm.get_params()
 
-    # https://anaconda.org/conda-forge/glmnet_py
-    # import glmnet_python
-    # might require Linux
-
     # R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET
     # https://rpy2.github.io/
     # https://github.com/conda-forge/r-glmnet-feedstock/issues/1
@@ -761,58 +745,110 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_, lower_limits, upper
     # conda install -c conda-forge r r-essentials
     # conda install -c conda-forge r glmnet
 
-    # IMPORT R glmnet
-    # for testing #todo get rid of the testing parameters
-    import numpy as np
-    x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
-    y_train = np.array([1, 0, 0, 1])
-    lower_limits = [10, 10, 10, 10]
-    upper_limits = [0, 0, 0, 0]
-    lambda_ = 1
-
-
-    from rpy2.robjects.packages import importr
-    from rpy2.robjects import numpy2ri, pandas2ri
+    # WORKING SOLUTION TO CALL R FUNCTIONS
+    import rpy2.robjects as ro
+    from rpy2.robjects import numpy2ri
 
     numpy2ri.activate()
-    glmnet = importr('glmnet')
 
-    # https://rpy2.github.io/doc/v3.0.x/html/robjects_functions.html
-    # https://stackoverflow.com/questions/45325274/calling-r-library-randomforest-from-python-using-rpy2
-    # import rpy2.robjects as ro
-    # from rpy2.robjects.conversion import localconverter
-    # from rpy2.robjects import globalenv
-    # x_train_nr, x_train_nc = x_train.shape
-    # x_train_r = ro.r.matrix(x_train, nrow=x_train_nr, ncol=x_train_nc)
-    # with localconverter(ro.default_converter + pandas2ri.converter):
-    #     x_train_pd_r = ro.conversion.py2rpy(x_train_pd)
-    # type(x_train_pd_r)
-    # y_train = np.array([1, 0, 0, 1])
-    # y_train_r = ro.vectors.FloatVector(y_train)
-    # ro.r('''
-    #         f <- function (x_, y_) {
-    #             library(glmnet)
-    #
-    #             mod <- glmnet(
-    #                 x=x_,
-    #                 y=y_,
-    #                 family="gaussian",
-    #                 alpha=0
-    #                 )
-    #         }
-    #     ''')
-    # r_f = ro.globalenv['f']
-    # test = r_f(x_=x_train, y_=y_train)
-    #
-    # ro.r('''
-    #     g <- function(model) {
-    #         coef(model)[1]
-    #     }
-    # ''')
-    # r_g = ro.globalenv['g']
-    # r_g(model=test)
+    # define glmnet model in r
+    ro.r('''
+            r_glmnet <- function (x, y, family, alpha, lambda_, lower_limits, upper_limits, intercept) {
+                
+                library(glmnet)
 
-    glmnet.glmnet(x_train, y_train, alpha=1, family='gaussian')
+                if(intercept == 1){
+                # print("Intercept")
+                mod <- glmnet(
+                    x=x,
+                    y=y,
+                    family=family,
+                    alpha=alpha,
+                    lambda=lambda_,
+                    lower.limits=lower_limits,
+                    upper.limits=upper_limits,
+                    )
+                } else {
+                # print("No Intercept")
+                mod <- glmnet(
+                    x=x,
+                    y=y,
+                    family=family,
+                    alpha=alpha,
+                    lambda=lambda_,
+                    lower.limits=lower_limits,
+                    upper.limits=upper_limits,
+                    intercept=FALSE
+                    )
+                }  
+            }
+        ''')
+    r_glmnet = ro.globalenv['r_glmnet']
+
+    # create model
+    mod = r_glmnet(x=x_train,
+                   y=y_train,
+                   alpha=1,
+                   family="gaussian",
+                   lambda_=lambda_,
+                   lower_limits=lower_limits,
+                   upper_limits=upper_limits,
+                   intercept=True
+                   )
+
+    # could use if we can get lambda to work
+    # from rpy2.robjects.packages import importr
+    # glmnet = importr('glmnet')
+    # mod = glmnet.glmnet(x_train,
+    #                     y_train,
+    #                     alpha=1,
+    #                     family='gaussian',
+    #                     # lambda=lambda_,
+    #                     lower_limits=lower_limits,
+    #                     upper_limits=upper_limits
+    #                     )
+
+    # create model without the intercept if negative
+    if mod[0][0] < 0:
+        mod = r_glmnet(x=x_train,
+                       y=y_train,
+                       alpha=1,
+                       family="gaussian",
+                       lambda_=lambda_,
+                       lower_limits=lower_limits,
+                       upper_limits=upper_limits,
+                       intercept=False
+                       )
+
+    # run model
+    ro.r('''
+                r_predict <- function(model, s, newx) {
+                    predict(model, s=s, newx=newx)
+                }
+            ''')
+    r_predict = ro.globalenv['r_predict']
+    y_train_pred = r_predict(model=mod, s=1, newx=x_train)
+    y_train_pred = y_train_pred.reshape(len(y_train_pred), )  # reshape to be of format (n,)
+
+    # calc r-squared on training set
+    rsq_train = rsq(true=y_train, predicted=y_train_pred)
+
+    # get coefficients
+    coefs = mod[0]
+
+    # get normalized root mean square error
+    nrmse_train = np.sqrt(np.mean((y_train - y_train_pred) ** 2) / (max(y_train) - min(y_train)))
+
+    # update model outputs to include calculated values
+    mod_out = {'rsq_train': rsq_train,
+               'nrmse_train': nrmse_train,
+               'coefs': coefs,
+               'y_pred': y_train_pred,
+               'mod': mod}
+
+    return mod_out
+
+
 ########################
 # TODO mmm
 
