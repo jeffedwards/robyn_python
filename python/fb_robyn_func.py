@@ -35,6 +35,7 @@ from collections import defaultdict
 ########################################################################################################################
 # FUNCTIONS
 
+
 def initiate_dictionary():
     """
     Creates a dictionary with variables that are set or updated withing functions
@@ -46,7 +47,6 @@ def initiate_dictionary():
     }
 
     return dict_vars
-
 
 
 def plotTrainSize(plotTrainSize, d):
@@ -113,7 +113,6 @@ def plotTrainSize(plotTrainSize, d):
 
 ########################
 # TODO plotResponseCurves
-
 
 
 def checkConditions(dt_transform, d: dict, set_hyperBoundLocal, set_lift=None):
@@ -204,6 +203,7 @@ def michaelis_menten(spend, vmax, km):
 
     return vmax * spend/(km + spend)
 
+
 def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
     dt_transform = dt.copy().reset_index()
     dt_transform = dt_transform.rename({d['set_dateVarName']: 'ds'}, axis=1)
@@ -215,7 +215,6 @@ def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
         pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
     except ValueError:
         print('input date variable should have format "yyyy-mm-dd"')
-
 
     # check variable existence
     if not d['activate_prophet']:
@@ -564,7 +563,7 @@ def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, g
     return x_out
 
 
-def rsq(true,predicted):
+def rsq(true, predicted):
     """
     ----------
     Parameters
@@ -672,6 +671,183 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 
 ########################
 # TODO refit
+
+def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: list, upper_limits: list):
+    """
+
+    :param x_train: numpy array; rows = record; columns = betas
+        e.g. np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    :param y_train: numpy array (1xn) of outcomes
+        e.g. np.array([1, 0, 0, 1])
+    :param lambda_: expects integer
+        e.g. 1
+    :param lower_limits:
+        e.g. [0, 0, 0, 0]
+    :param upper_limits:
+        e.g. [10, 10, 10, 10]
+    :return: dictionary of model outputs including rsq_train, nrmse_train, coefs, y_pred, model
+    """
+
+    # # FOR TESTING #TODO GET RID OF THE TESTING PARAMETERS
+    # import numpy as np
+    # x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    # y_train = np.array([1, 0, 0, 1])
+    # upper_limits = [10, 10, 10, 10]
+    # lower_limits = [0, 0, 0, 0]
+    # lambda_ = 1
+
+    # GREAT PACKAGE, BUT REQUIRES LINUX
+    # https://glmnet-python.readthedocs.io/en/latest/glmnet_vignette.html
+    # https://web.stanford.edu/~hastie/glmnet/glmnet_alpha.html#intro
+    # https://pypi.org/project/glmnet-python/
+    # import glmnet_python
+    # from glmnet import glmnet
+
+    # WORKS BUT DOES NOT ALLOW LIMITS TO BE PASSED IN
+    # from sklearn.linear_model import Ridge
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html#sklearn.linear_model.Ridge
+    # https://scikit-learn.org/stable/modules/linear_model.html#ridge-regression-and-classification
+    # https://stats.stackexchange.com/questions/160096/what-are-the-differences-between-ridge-regression-using-rs-glmnet-and-pythons
+    # NO UPPER AND LOWER LIMITS PASSED INTO RIDGE REGRESSION.
+    # mod = Ridge(alpha=1,
+    #             fit_intercept=True,
+    #             normalize=False,
+    #             tol=1e-3,
+    #             solver='auto',
+    #             random_state=None)
+    # mod.fit(X=x, y=y)
+    # mod.intercept_
+
+    # WORKS BUT DOES NOT ALLOW LIMITS TO BE PASSED IN
+    # from pyglmnet import GLM
+    # NO UPPER AND LOWER LIMITS PASSED INTO RIDGE REGRESSION.
+    # glm = GLM(distr='poisson',
+    #           alpha=0,
+    #           Tau=None,
+    #           group=None,
+    #           reg_lambda=0.1,
+    #           solver='batch-gradient',
+    #           learning_rate=2e-1,
+    #           max_iter=1000,
+    #           tol=1e-6,
+    #           eta=2.0,
+    #           score_metric='deviance',
+    #           fit_intercept=True,
+    #           random_state=0,
+    #           callback=None,
+    #           verbose=False)
+    # glm.get_params()
+
+    # R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET
+    # https://rpy2.github.io/
+    # https://github.com/conda-forge/r-glmnet-feedstock/issues/1
+    # conda install -c conda-forge rpy2
+    # conda install -c conda-forge r r-essentials
+    # conda install -c conda-forge r glmnet
+
+    # WORKING SOLUTION TO CALL R FUNCTIONS
+    import rpy2.robjects as ro
+    from rpy2.robjects import numpy2ri
+
+    numpy2ri.activate()
+
+    # define glmnet model in r
+    ro.r('''
+            r_glmnet <- function (x, y, family, alpha, lambda_, lower_limits, upper_limits, intercept) {
+                
+                library(glmnet)
+
+                if(intercept == 1){
+                # print("Intercept")
+                mod <- glmnet(
+                    x=x,
+                    y=y,
+                    family=family,
+                    alpha=alpha,
+                    lambda=lambda_,
+                    lower.limits=lower_limits,
+                    upper.limits=upper_limits,
+                    )
+                } else {
+                # print("No Intercept")
+                mod <- glmnet(
+                    x=x,
+                    y=y,
+                    family=family,
+                    alpha=alpha,
+                    lambda=lambda_,
+                    lower.limits=lower_limits,
+                    upper.limits=upper_limits,
+                    intercept=FALSE
+                    )
+                }  
+            }
+        ''')
+    r_glmnet = ro.globalenv['r_glmnet']
+
+    # create model
+    mod = r_glmnet(x=x_train,
+                   y=y_train,
+                   alpha=1,
+                   family="gaussian",
+                   lambda_=lambda_,
+                   lower_limits=lower_limits,
+                   upper_limits=upper_limits,
+                   intercept=True
+                   )
+
+
+    # could use if we can get lambda to work
+    # from rpy2.robjects.packages import importr
+    # glmnet = importr('glmnet')
+    # mod = glmnet.glmnet(x_train,
+    #                     y_train,
+    #                     alpha=1,
+    #                     family='gaussian',
+    #                     # lambda=lambda_,
+    #                     lower_limits=lower_limits,
+    #                     upper_limits=upper_limits
+    #                     )
+
+    # create model without the intercept if negative
+    if mod[0][0] < 0:
+        mod = r_glmnet(x=x_train,
+                       y=y_train,
+                       alpha=1,
+                       family="gaussian",
+                       lambda_=lambda_,
+                       lower_limits=lower_limits,
+                       upper_limits=upper_limits,
+                       intercept=False
+                       )
+
+    # run model
+    ro.r('''
+                r_predict <- function(model, s, newx) {
+                    predict(model, s=s, newx=newx)
+                }
+            ''')
+    r_predict = ro.globalenv['r_predict']
+    y_train_pred = r_predict(model=mod, s=1, newx=x_train)
+    y_train_pred = y_train_pred.reshape(len(y_train_pred), )  # reshape to be of format (n,)
+
+    # calc r-squared on training set
+    rsq_train = rsq(true=y_train, predicted=y_train_pred)
+
+    # get coefficients
+    coefs = mod[0]
+
+    # get normalized root mean square error
+    nrmse_train = np.sqrt(np.mean((y_train - y_train_pred) ** 2) / (max(y_train) - min(y_train)))
+
+    # update model outputs to include calculated values
+    mod_out = {'rsq_train': rsq_train,
+               'nrmse_train': nrmse_train,
+               'coefs': coefs,
+               'y_pred': y_train_pred,
+               'mod': mod}
+
+    return mod_out
 
 
 ########################
