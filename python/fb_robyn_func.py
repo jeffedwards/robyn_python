@@ -119,7 +119,7 @@ def checkConditions(dt_transform, d: dict, set_hyperBoundLocal, set_lift=None):
     """
     check all conditions 1 by 1; terminate and raise errors if conditions are not met
     :param dt_transformations:
-    :return: dictionary
+    :return: dict
     """
     try:
         d['set_mediaVarName']
@@ -198,13 +198,22 @@ def michaelis_menten(spend, vmax, km):
     :param vmax:
     :param spend:
     :param km:
-    :return:
+    :return: float
     """
 
     return vmax * spend/(km + spend)
 
 
 def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
+    """
+
+    :param dt:
+    :param dt_holiday:
+    :param d:
+    :param set_lift:
+    :param set_hyperBoundLocal:
+    :return: (DataFrame, dict)
+    """
     dt_transform = dt.copy().reset_index()
     dt_transform = dt_transform.rename({d['set_dateVarName']: 'ds'}, axis=1)
     dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
@@ -424,7 +433,7 @@ def gethypernames(adstock, set_mediaVarName):
     ----------
     adstock: chosen adstock (geometric or weibull)
     set_mediaVarName: list of media channels
-    Returns
+    return:
     -------
     crossed list of adstock parameters and media channels
     """
@@ -441,14 +450,12 @@ def gethypernames(adstock, set_mediaVarName):
 
 def adstockGeometric(x, theta):
     """
-    Parameters
-    ----------
-    x: vector
-    theta: decay coefficient
-    Returns
-    -------
-    transformed vector
+
+    :param x:
+    :param theta:
+    :return: numpy
     """
+
     x_decayed = [x[0]] + [0] * (len(x) - 1)
     for i in range(1, len(x_decayed)):
         x_decayed[i] = x[i] + theta * x_decayed[i - 1]
@@ -463,15 +470,15 @@ def helperWeibull(x, y, vec_cum, n):
     :param y:
     :param vec_cum:
     :param n:
-    :return:
+    :return: numpy
     """
 
     x_vec = np.array([0] * (y - 1) + [x] * (n - y + 1))
     vec_lag = np.roll(vec_cum, y - 1)
     vec_lag[: y - 1] = 0
-    x_matrix = np.c_[x_vec, vec_cum]
+    x_matrix = np.c_[x_vec, vec_lag]
     x_prod = np.multiply.reduce(x_matrix, axis=1)
-
+    print(x_prod)
     return x_prod
 
 
@@ -479,12 +486,12 @@ def adstockWeibull(x, shape, scale):
     """
     Parameters
     ----------
-    x: vector
+    x: numpy array
     shape: shape parameter for Weibull
     scale: scale parameter for Weibull
     Returns
     -------
-    tuple
+    (list, list)
     """
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.weibull_min.html
 
@@ -496,7 +503,8 @@ def adstockWeibull(x, shape, scale):
     thetaVecCum = np.cumprod(thetaVec).tolist()
 
     x_decayed = list(map(lambda i, j: helperWeibull(i, j, vec_cum=thetaVecCum, n=n), x, bin))
-    x_decayed = np.concatenate(x_decayed, axis=0).reshape(7, 7)
+    x_decayed = np.concatenate(x_decayed, axis=0).reshape(n, n)
+    x_decayed = np.transpose(x_decayed)
     x_decayed = np.sum(x_decayed, axis=1).tolist()
 
     return x_decayed, thetaVecCum
