@@ -553,8 +553,8 @@ def transformation(x, adstock, theta=None, shape=None, scale=None, alpha=None, g
     # x_normalized = x_decayed
 
     ## step 3: s-curve transformation
-    gammaTrans = round(np.quantile(np.linspace(min(x_normalized), max(normalized), 100), gamma), 4)
-    x_scurve = x_normalized ** alpha / (x_normalized ** alpha + gammaTrans ** alpha)
+    gammaTrans = round(np.quantile(np.linspace(min(x_decayed), max(x_decayed), 100), gamma), 4)
+    x_scurve = x_decayed ** alpha / (x_decayed ** alpha + gammaTrans ** alpha)
     # x_scurve.plot()
     if stage in [1, 2]:
         x_out = x_decayed
