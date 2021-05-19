@@ -476,9 +476,9 @@ def helperWeibull(x, y, vec_cum, n):
     x_vec = np.array([0] * (y - 1) + [x] * (n - y + 1))
     vec_lag = np.roll(vec_cum, y - 1)
     vec_lag[: y - 1] = 0
-    x_matrix = np.c_[x_vec, vec_cum]
+    x_matrix = np.c_[x_vec, vec_lag]
     x_prod = np.multiply.reduce(x_matrix, axis=1)
-
+    print(x_prod)
     return x_prod
 
 
@@ -486,7 +486,7 @@ def adstockWeibull(x, shape, scale):
     """
     Parameters
     ----------
-    x: numpy
+    x: numpy array
     shape: shape parameter for Weibull
     scale: scale parameter for Weibull
     Returns
@@ -503,7 +503,8 @@ def adstockWeibull(x, shape, scale):
     thetaVecCum = np.cumprod(thetaVec).tolist()
 
     x_decayed = list(map(lambda i, j: helperWeibull(i, j, vec_cum=thetaVecCum, n=n), x, bin))
-    x_decayed = np.concatenate(x_decayed, axis=0).reshape(7, 7)
+    x_decayed = np.concatenate(x_decayed, axis=0).reshape(n, n)
+    x_decayed = np.transpose(x_decayed)
     x_decayed = np.sum(x_decayed, axis=1).tolist()
 
     return x_decayed, thetaVecCum
