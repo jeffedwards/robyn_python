@@ -778,12 +778,12 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
     """
 
     # # FOR TESTING #TODO GET RID OF THE TESTING PARAMETERS
-    import numpy as np
-    x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
-    y_train = np.array([1, 0, 0, 1])
-    upper_limits = [10, 10, 10, 10]
-    lower_limits = [0, 0, 0, 0]
-    lambda_ = 1
+    # import numpy as np
+    # x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    # y_train = np.array([1, 0, 0, 1])
+    # upper_limits = [10, 10, 10, 10]
+    # lower_limits = [0, 0, 0, 0]
+    # lambda_ = 1
 
     # GREAT PACKAGE, BUT REQUIRES LINUX
     # https://glmnet-python.readthedocs.io/en/latest/glmnet_vignette.html
