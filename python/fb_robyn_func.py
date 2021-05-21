@@ -612,6 +612,95 @@ def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
 ########################
 # TODO decomp
 
+    # # FOR TESTING #TODO GET RID OF THE TESTING PARAMETERS
+
+    ### Prepare dummy data to validate
+    #coefs = pd.read_csv("C:\\r\\MMM\\Robyn_master_for_python translation\\input_dummy\\coefs.csv", index_col=0, squeeze = True)
+    #dt_modAdstocked = pd.read_csv("C:\\r\\MMM\\Robyn_master_for_python translation\\input_dummy\\dt_modAdstocked.csv")
+    #x = pd.read_csv("C:\\r\\MMM\\Robyn_master_for_python translation\\input_dummy\\x.csv")
+    #y_pred = pd.read_csv("C:\\r\\MMM\\Robyn_master_for_python translation\\input_dummy\\y_pred.csv", squeeze = True)
+    #dt_mod = pd.read_csv("C:\\r\\MMM\\Robyn_master_for_python translation\\input_dummy\\dt_mod.csv")
+    #d = {'dt_mod': dt_mod}
+    #i = 1
+
+    #dt_modAdstocked['competitor_sales_B'] = dt_modAdstocked['competitor_sales_B'].astype("category")
+    #dt_modAdstocked['tv_S'] = dt_modAdstocked['tv_S'].astype("category")
+    #dt_modAdstocked.dtypes
+
+    ### WRITE FUNCTION
+
+def decomp(coefs, dt_modAdstocked, x, y_pred, i, d):
+    """
+    ----------
+    Parameters
+    ----------
+    coef: Pandas Series with index name
+    dt_modAdstocked: Pandas Dataframe
+    x: Pandas Dataframe
+    y_pred: Pandas Series
+    i: interger
+    d: master dictionary
+    Returns
+    -------
+    decompCollect
+    """
+
+    ## input for decomp
+    y = dt_modAdstocked["depVar"]
+    indepVar = dt_modAdstocked.loc[:, dt_modAdstocked.columns != 'depVar']
+    intercept = coefs.iloc[0]
+    indepVarName = indepVar.columns.tolist()
+    indepVarCat = indepVar.select_dtypes(['category']).columns.tolist()
+
+    ## decomp x
+    xDecomp = x * coefs.iloc[1:]
+    xDecomp.insert(loc=0, column='intercept', value=[intercept] * len(x))
+    xDecompOut = pd.concat([d['dt_mod']['ds'], xDecomp], axis=1)
+
+    ## QA decomp
+    y_hat = xDecomp.sum(axis=1)
+    errorTerm = y_hat - y_pred
+    if np.prod(round(y_pred) == round(y_hat)) == 0:
+        print(
+        "### attention for loop " + str(i) + \
+        ": manual decomp is not matching linear model prediction. Deviation is " + \
+        str(np.mean(errorTerm / y) * 100) +  "% ###"
+        )
+
+    ## output decomp
+    y_hat_scaled = abs(xDecomp).sum(axis=1)
+    xDecompOutPerc_scaled = abs(xDecomp).div(y_hat_scaled, axis=0)
+    xDecompOut_scaled = xDecompOutPerc_scaled.multiply(y_hat, axis=0)
+
+    xDecompOutAgg = xDecompOut[['intercept'] + indepVarName].sum(axis=0)
+    xDecompOutAggPerc = xDecompOutAgg / sum(y_hat)
+    xDecompOutAggMeanNon0 = xDecompOut.mean(axis=0).clip(lower=0)
+    xDecompOutAggMeanNon0Perc = xDecompOutAggMeanNon0 / sum(xDecompOutAggMeanNon0)
+
+    coefsOut = coefs.reset_index(inplace=False)
+    coefsOut = coefsOut.rename(columns={'index': 'rn'})
+    if len(indepVarCat) == 0:
+        pass
+    else:
+        for var in indepVarCat:
+            coefsOut.rn.replace(r'(^.*' + var + '.*$)', var, regex=True, inplace=True)
+    coefsOut = coefsOut.groupby(coefsOut['rn'], sort=False).mean().reset_index()
+
+    frame = {'xDecompAgg': xDecompOutAgg,
+             'xDecompPerc': xDecompOutAggPerc,
+             'xDecompMeanNon0': xDecompOutAggMeanNon0,
+             'xDecompMeanNon0Perc': xDecompOutAggMeanNon0Perc}
+    frame.index = coefsOut.index
+    decompOutAgg = pd.merge(coefsOut, frame, left_index=True, right_index=True)
+    decompOutAgg['pos'] = decompOutAgg['xDecompAgg'] >= 0
+
+    decompCollect = {'xDecompVec': xDecompOut,
+                     'xDecompVec_scaled': xDecompOut_scaled,
+                     'xDecompAgg': decompOutAgg}
+
+    return decompCollect
+
+
 
 ########################
 # TODO calibrateLift
@@ -689,12 +778,12 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
     """
 
     # # FOR TESTING #TODO GET RID OF THE TESTING PARAMETERS
-    # import numpy as np
-    # x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
-    # y_train = np.array([1, 0, 0, 1])
-    # upper_limits = [10, 10, 10, 10]
-    # lower_limits = [0, 0, 0, 0]
-    # lambda_ = 1
+    import numpy as np
+    x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    y_train = np.array([1, 0, 0, 1])
+    upper_limits = [10, 10, 10, 10]
+    lower_limits = [0, 0, 0, 0]
+    lambda_ = 1
 
     # GREAT PACKAGE, BUT REQUIRES LINUX
     # https://glmnet-python.readthedocs.io/en/latest/glmnet_vignette.html
