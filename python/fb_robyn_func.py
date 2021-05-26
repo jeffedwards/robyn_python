@@ -11,29 +11,143 @@
 ########################################################################################################################
 # IMPORTS
 
-import math
-
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from scipy import stats
-# import weibull as weibull
-from sklearn import preprocessing
-from scipy.optimize import curve_fit
-from sklearn.linear_model import LinearRegression
-# from prophet import Prophet
-from scipy import stats
-import matplotlib.pyplot as plt
-from sklearn.metrics import r2_score
-
-from prophet import Prophet
-from datetime import datetime, timedelta
 from collections import defaultdict
-
+from datetime import timedelta
+import matplotlib.pyplot as plt
+import math
+import numpy as np
+import os
+import pandas as pd
+from prophet import Prophet
+# import weibull as weibull
+import rpy2.robjects as ro
+from rpy2.robjects import numpy2ri
+from scipy import stats
+from scipy.optimize import curve_fit
+from sklearn import preprocessing
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
 
 
 ########################################################################################################################
 # FUNCTIONS
+
+class Robyn(object):
+    """
+    Robyn MMM
+    """
+
+    def __init__(self):
+        self.x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+        self.y_train = np.array([1, 0, 0, 1])
+        self.upper_limits = [10, 10, 10, 10]
+        self.lower_limits = [0, 0, 0, 0]
+        self.lambda_ = 1
+
+
+# todo Are we sure we don't want a class?
+def initiate_testing_dictionary():
+    """
+    Creates a dictionary with test data variables created.
+    :return: the dictionary
+    """
+
+    # Set variables
+    x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
+    y_train = np.array([1, 0, 0, 1])
+    upper_limits = [10, 10, 10, 10]
+    lower_limits = [0, 0, 0, 0]
+    lambda_ = 1
+
+    set_hyperBoundLocal = {
+        'facebook_I_alphas': [0.5, 3],  # example bounds for alpha
+        'facebook_I_gammas': [0.3, 1],  # example bounds for gamma
+        'facebook_I_thetas': [0, 0.3],  # example bounds for theta
+        'facebook_I_shapes': [0.0001, 2],  # example bounds for shape
+        'facebook_I_scales': [0, 0.1],  # example bounds for scale
+        'ooh_S_alphas': [0.5, 3],
+        'ooh_S_gammas': [0.3, 1],
+        'ooh_S_thetas': [0.1, 0.4],
+        'ooh_S_shapes': [0.0001, 2],
+        'ooh_S_scales': [0, 0.1],
+        'print_S_alphas': [0.5, 3],
+        'print_S_gammas': [0.3, 1],
+        'print_S_thetas': [0.1, 0.4],
+        'print_S_shapes': [0.0001, 2],
+        'print_S_scales': [0, 0.1],
+        'tv_S_alphas': [0.5, 3],
+        'tv_S_gammas': [0.3, 1],
+        'tv_S_thetas': [0.3, 0.8],
+        'tv_S_shapes': [0.0001, 2],
+        'tv_S_scales': [0, 0.1],
+        'search_clicks_P_alphas': [0.5, 3],
+        'search_clicks_P_gammas': [0.3, 1],
+        'search_clicks_P_thetas': [0, 0.3],
+        'search_clicks_P_shapes': [0.0001, 2],
+        'search_clicks_P_scales': [0, 0.1]
+    }
+
+    # Variables that require functions
+    mod_out = refit(x_train=x_train,
+                    y_train=y_train,
+                    lambda_=lambda_,
+                    upper_limits=upper_limits,
+                    lower_limits=lower_limits
+                    )
+
+    # Final dictionary
+    dict_vars = {
+                 # PRIOR SET VARIABLES
+                 'x_train': x_train,
+                 'y_train': y_train,
+                 'lambda_': lambda_,
+                 'upper_limits':  upper_limits,
+                 'lower_limits': lower_limits,
+                 'mod_out': mod_out,
+
+                 # INPUT VARIABLES
+                 'activate_calibration': True,  # Switch to True to calibrate model.
+                 'activate_baseline': True,
+                 'activate_prophet': True,  # Turn on or off the Prophet feature
+                 'set_baseVarName': ['competitor_sales_B'],  # typically competitors, price & promotion, temperature, unemployment rate etc
+                 'set_baseVarSign': ['negative'],  # c('default', 'positive', and 'negative'), control the signs of coefficients for baseline variables
+                 'set_country': 'DE',  # only one country allowed once. Including national holidays for 59 countries, whose list can be found on our github guide
+                 'set_dateVarName': 'DATE',  # date format must be '2020-01-01'
+                 'set_depVarType': 'revenue',  # there should be only one dependent variable
+                 'set_factorVarName': [],
+                 'set_mediaSpendName': ['tv_S', 'ooh_S', 'print_S', 'facebook_S', 'search_S'],
+                 'set_mediaVarName': ['tv_S', 'ooh_S', 'print_S', 'facebook_I', 'search_clicks_P'],  # we recommend to use media exposure metrics like impressions, GRP etc for the model. If not applicable, use spend instead
+                 'set_mediaVarSign': ['positive', 'positive', 'positive', 'positive', 'positive'],
+                 'set_prophet': ['trend', 'season', 'holiday'],  # 'trend','season', 'weekday', 'holiday' are provided and case-sensitive. Recommend at least keeping Trend & Holidays
+                 'set_prophetVarSign': ['default', 'default', 'default'],  # c('default', 'positive', and 'negative'). Recommend as default. Must be same length as set_prophet
+
+                 # GLOBAL PARAMETERS
+                 'adstock': 'geometric', # geometric or weibull. weibull is more flexible, yet has one more parameter and thus takes longer
+                 'fixed_lambda': None,
+                 'fixed_out': False,
+                 'lambda_n': 100,
+                 'optimizer_name': 'DiscreteOnePlusOne',
+                 'plot_folder': '~/Documents/GitHub/plots',
+                 'set_cores': 6,  # User needs to set these cores depending upon the cores in local machine
+                 'set_hyperBoundLocal': set_hyperBoundLocal,
+                 'set_hyperOptimAlgo': 'DiscreteOnePlusOne', # selected algorithm for Nevergrad, the gradient-free optimisation library https://facebookresearch.github.io/nevergrad/index.html
+                 'set_iter': 500,  # number of allowed iterations per trial. 500 is recommended
+                 'set_modTrainSize': 0.74,  # 0.74 means taking 74% of data to train and 30% to test the model.
+                 'set_trial': 80,  # number of all
+
+                 }
+
+    # Other calculated
+    hypParamSamName = gethypernames(adstock=dict_vars['adstock'], set_mediaVarName=dict_vars['set_mediaVarName'])
+    dict_vars['hypParamSamName'] = hypParamSamName
+    # set_trainStartDate
+    local_name = hypParamSamName
+    dict_vars['local_name'] = local_name
+
+    # Summary
+    print(f'Variables available: \n\t{[x for x in dict_vars.keys()]}')
+
+    return dict_vars
 
 
 def initiate_dictionary():
@@ -426,7 +540,6 @@ def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
     return dt_transform, d
 
 
-
 def gethypernames(adstock, set_mediaVarName):
     """
     Parameters
@@ -709,7 +822,6 @@ def decomp(coefs, dt_modAdstocked, x, y_pred, i, d):
     return decompCollect
 
 
-
 ########################
 # TODO calibrateLift
 
@@ -767,9 +879,9 @@ def decomp(coefs, dt_modAdstocked, x, y_pred, i, d):
 #     return liftCollect
 
 ########################
-# TODO refit
+# Refit
 
-def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: list, upper_limits: list):
+def refit(x_train, y_train, lambda_: int, lower_limits: list, upper_limits: list):
     """
 
     :param x_train: numpy array; rows = record; columns = betas
@@ -785,70 +897,10 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
     :return: dictionary of model outputs including rsq_train, nrmse_train, coefs, y_pred, model
     """
 
-    # # FOR TESTING #TODO GET RID OF THE TESTING PARAMETERS
-    # import numpy as np
-    # x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
-    # y_train = np.array([1, 0, 0, 1])
-    # upper_limits = [10, 10, 10, 10]
-    # lower_limits = [0, 0, 0, 0]
-    # lambda_ = 1
-
-    # GREAT PACKAGE, BUT REQUIRES LINUX
-    # https://glmnet-python.readthedocs.io/en/latest/glmnet_vignette.html
-    # https://web.stanford.edu/~hastie/glmnet/glmnet_alpha.html#intro
-    # https://pypi.org/project/glmnet-python/
-    # import glmnet_python
-    # from glmnet import glmnet
-
-    # WORKS BUT DOES NOT ALLOW LIMITS TO BE PASSED IN
-    # from sklearn.linear_model import Ridge
-    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Ridge.html#sklearn.linear_model.Ridge
-    # https://scikit-learn.org/stable/modules/linear_model.html#ridge-regression-and-classification
-    # https://stats.stackexchange.com/questions/160096/what-are-the-differences-between-ridge-regression-using-rs-glmnet-and-pythons
-    # NO UPPER AND LOWER LIMITS PASSED INTO RIDGE REGRESSION.
-    # mod = Ridge(alpha=1,
-    #             fit_intercept=True,
-    #             normalize=False,
-    #             tol=1e-3,
-    #             solver='auto',
-    #             random_state=None)
-    # mod.fit(X=x, y=y)
-    # mod.intercept_
-
-    # WORKS BUT DOES NOT ALLOW LIMITS TO BE PASSED IN
-    # from pyglmnet import GLM
-    # NO UPPER AND LOWER LIMITS PASSED INTO RIDGE REGRESSION.
-    # glm = GLM(distr='poisson',
-    #           alpha=0,
-    #           Tau=None,
-    #           group=None,
-    #           reg_lambda=0.1,
-    #           solver='batch-gradient',
-    #           learning_rate=2e-1,
-    #           max_iter=1000,
-    #           tol=1e-6,
-    #           eta=2.0,
-    #           score_metric='deviance',
-    #           fit_intercept=True,
-    #           random_state=0,
-    #           callback=None,
-    #           verbose=False)
-    # glm.get_params()
-
-    # R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET R GLMNET
-    # https://rpy2.github.io/
-    # https://github.com/conda-forge/r-glmnet-feedstock/issues/1
-    # conda install -c conda-forge rpy2
-    # conda install -c conda-forge r r-essentials
-    # conda install -c conda-forge r glmnet
-
-    # WORKING SOLUTION TO CALL R FUNCTIONS
-    import rpy2.robjects as ro
-    from rpy2.robjects import numpy2ri
-
+    # Call R functions - to match outputs of Robyn in R
     numpy2ri.activate()
 
-    # define glmnet model in r
+    # Define glmnet model in r
     ro.r('''
             r_glmnet <- function (x, y, family, alpha, lambda_, lower_limits, upper_limits, intercept) {
                 
@@ -882,7 +934,7 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
         ''')
     r_glmnet = ro.globalenv['r_glmnet']
 
-    # create model
+    # Create model
     mod = r_glmnet(x=x_train,
                    y=y_train,
                    alpha=1,
@@ -893,20 +945,7 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
                    intercept=True
                    )
 
-
-    # could use if we can get lambda to work
-    # from rpy2.robjects.packages import importr
-    # glmnet = importr('glmnet')
-    # mod = glmnet.glmnet(x_train,
-    #                     y_train,
-    #                     alpha=1,
-    #                     family='gaussian',
-    #                     # lambda=lambda_,
-    #                     lower_limits=lower_limits,
-    #                     upper_limits=upper_limits
-    #                     )
-
-    # create model without the intercept if negative
+    # Create model without the intercept if negative
     if mod[0][0] < 0:
         mod = r_glmnet(x=x_train,
                        y=y_train,
@@ -918,7 +957,7 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
                        intercept=False
                        )
 
-    # run model
+    # Run model
     ro.r('''
                 r_predict <- function(model, s, newx) {
                     predict(model, s=s, newx=newx)
@@ -928,16 +967,16 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
     y_train_pred = r_predict(model=mod, s=1, newx=x_train)
     y_train_pred = y_train_pred.reshape(len(y_train_pred), )  # reshape to be of format (n,)
 
-    # calc r-squared on training set
+    # Calc r-squared on training set
     rsq_train = rsq(true=y_train, predicted=y_train_pred)
 
-    # get coefficients
+    # Get coefficients
     coefs = mod[0]
 
-    # get normalized root mean square error
+    # Get normalized root mean square error
     nrmse_train = np.sqrt(np.mean((y_train - y_train_pred) ** 2) / (max(y_train) - min(y_train)))
 
-    # update model outputs to include calculated values
+    # Update model outputs to include calculated values
     mod_out = {'rsq_train': rsq_train,
                'nrmse_train': nrmse_train,
                'coefs': coefs,
@@ -949,6 +988,39 @@ def refit(x_train: np.array(), y_train: np.array(), lambda_: int, lower_limits: 
 
 ########################
 # TODO mmm
+
+def mmm(dict_vars: dict,
+        set_iter=100,
+        set_cores=6,
+        lambda_n=100,
+        fixed_out=False,
+        optimizer_name='DiscreteOnePlusOne',
+        fixed_lambda=None):
+    """
+
+    :param dict_vars:
+    :param set_iter:
+    :param set_cores:
+    :param lambda_n:
+    :param fixed_out:
+    :param optimizer_name:
+    :param fixed_lambda:
+    :return:
+    """
+
+    hypParamSamName = gethypernames(adstock=dict_vars['adstock'], set_mediaVarName=dict_vars['set_mediaVarName'])
+
+    if not fixed_out:
+        # input_collect = # todo not sure what this is.  Finish it
+        input_collect = dict_vars['set_hyperBoundLocal']
+
+    # Sort hyper-parameter list by name
+
+
+
+
+
+
 
 
 ########################
