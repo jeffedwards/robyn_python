@@ -426,7 +426,6 @@ def inputWrangling(dt, dt_holiday, d, set_lift, set_hyperBoundLocal):
     return dt_transform, d
 
 
-
 def gethypernames(adstock, set_mediaVarName):
     """
     Parameters
