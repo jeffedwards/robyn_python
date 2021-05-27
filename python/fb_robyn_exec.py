@@ -17,7 +17,12 @@ il.reload(frf)
 ########################################################################################################################
 # LOAD DATA & SCRIPTS
 
-dict_vars = frf.initiate_dictionary()
+# todo Remove testing dictionary when done
+dict_vars = frf.initiate_testing_dictionary()
+# dict_vars = frf.initiate_dictionary()
+
+robyn = frf.Robyn()
+robyn.upper_limits
 
 
 ########################################################################################################################
