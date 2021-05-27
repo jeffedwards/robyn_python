@@ -987,7 +987,7 @@ def refit(x_train, y_train, lambda_: int, lower_limits: list, upper_limits: list
 
 
 ########################
-# TODO mmm
+# TODO mmm Thami and Jeff
 
 def mmm(dict_vars: dict,
         set_iter=100,
