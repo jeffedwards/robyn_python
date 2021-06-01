@@ -1045,39 +1045,39 @@ def robyn(set_hyperBoundLocal, set_hyperOptimAlgo, set_trial, set_cores, fixed):
     fixed.hyppar.dt = NULL
     pareto_fronts = np.array[1, 2, 3]
 
-    # start system time
+    ### start system time
 
-    # check if plotting directory exists
+    ### check if plotting directory exists
 
     #####################################
-    # run mmm function on set_trials
+    ### run mmm function on set_trials
 
     hyperparameter_fixed = pd.DataFrame.from_dict(set_hyperBoundLocal)
     hypParamSamName = gethypernames()
 
     if fixed.out == True:
 
-        # run mmm function if using old model result tables
+        ### run mmm function if using old model result tables
 
         if fixed.hyppar.dt.isna().any(axis=None):
             raise ValueError('when fixed.out=T, please provide the table model_output_resultHypParam from previous runs or pareto_hyperparameters.csv with desired model IDs')
 
         ### check if hypParamSamName + 'lambda' is in fixed.hyppar.dt columns
+
         # if (!all(c(hypParamSamName, "lambda") %in% names(fixed.hyppar.dt))) {stop("fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID")}
         #if any('lambdas' in s for s in hypParamSamName):
         #    raise ValueError('fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID')
-        ###
 
         model_output_collect = []
 
         ### call mmm function with inputs
+
         #model_output_collect[[1]] = mmm(fixed.hyppar.dt[, hypParamSamName, with = F]
         #                               ,set_iter = set_iter
         #                               ,set_cores = set_cores
         #                               ,optimizer_name = optimizer_name
         #                               ,fixed.out = T
         #                               ,fixed.lambda = unlist(fixed.hyppar.dt$lambda))
-        ###
 
 
 
