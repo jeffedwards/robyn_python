@@ -162,15 +162,15 @@ activate_calibration <- F # Switch to TRUE to calibrate model.
 ################################################################
 #### Prepare input data
 
-dt_mod <- f.inputWrangling() 
+dt_mod <- f.inputWrangling()
 
 ################################################################
 #### Run models
 
 model_output_collect <- f.robyn(set_hyperBoundLocal
                                 ,optimizer_name = set_hyperOptimAlgo
-                                ,set_trial = set_trial
-                                ,set_cores = set_cores
+                                ,set_trial = 2
+                                ,set_cores = 16
                                 ,plot_folder = "~/Documents/GitHub/plots") # please set your folder path to save plots. It ends without "/".
 
 ## reload old models from csv

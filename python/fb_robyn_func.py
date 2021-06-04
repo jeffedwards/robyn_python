@@ -145,7 +145,9 @@ def initiate_testing_dictionary():
     dict_vars['local_name'] = local_name
 
     # Summary
-    print(f'Variables available: \n\t{[x for x in dict_vars.keys()]}')
+    print(f'Variables available:')
+    for key in dict_vars.keys():
+        print(f'\t{key}')
 
     return dict_vars
 
@@ -998,15 +1000,19 @@ def mmm(dict_vars: dict,
         fixed_lambda=None):
     """
 
-    :param dict_vars:
-    :param set_iter:
-    :param set_cores:
+    :param dict_vars:  Dictionary of variables to be used and updated
+    :param set_iter:  Number of iterations to run
+    :param set_cores: Number of cores used for processing
     :param lambda_n:
     :param fixed_out:
     :param optimizer_name:
+        Optimizers include 'DiscreteOnePlusOne', 'DoubleFastGADiscreteOnePlusOne', 'TwoPointsDE', 'DE'
     :param fixed_lambda:
     :return:
     """
+
+    #########################
+    # Collect hyperparameters
 
     hypParamSamName = gethypernames(adstock=dict_vars['adstock'], set_mediaVarName=dict_vars['set_mediaVarName'])
 
@@ -1015,10 +1021,6 @@ def mmm(dict_vars: dict,
         input_collect = dict_vars['set_hyperBoundLocal']
 
     # Sort hyper-parameter list by name
-
-
-
-
 
 
 
