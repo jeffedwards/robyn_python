@@ -32,19 +32,6 @@ from sklearn.metrics import r2_score
 ########################################################################################################################
 # FUNCTIONS
 
-class Robyn(object):
-    """
-    Robyn MMM
-    """
-
-    def __init__(self):
-        self.x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
-        self.y_train = np.array([1, 0, 0, 1])
-        self.upper_limits = [10, 10, 10, 10]
-        self.lower_limits = [0, 0, 0, 0]
-        self.lambda_ = 1
-
-
 # todo Are we sure we don't want a class?
 def initiate_testing_dictionary():
     """
