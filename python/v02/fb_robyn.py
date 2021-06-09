@@ -37,6 +37,12 @@ class Robyn(object):
         # self.mod = None
         # self.hyperBoundLocal = None
 
+        # DEFAULT VARIABLES
+
+
+
+        # clean up after testing
+
         # INPUT VARIABLES
         self.activate_calibration = True  # Switch to True to calibrate model.
         self.activate_baseline = True
