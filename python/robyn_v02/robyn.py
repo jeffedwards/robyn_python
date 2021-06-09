@@ -29,6 +29,11 @@ class Robyn(object):
 
         # VARIABLES - GLOBAL
         self.df_holidays = pd.read_csv('source/holidays.csv')
+        self.adstock_type = 'geometric'  # geometric or weibull. weibull is more flexible, et has one more parameter and thus takes longer
+        self.hyperBoundLocal = None
+        self.names_media_spend = ['tv_S', 'ooh_S', 'print_S', 'facebook_S', 'search_S']
+
+        # todo Does it make sense to just get these from the column names in a data frame?
 
         # VARIABLES - WILL BE UPDATED
         self.mod = None
@@ -38,7 +43,6 @@ class Robyn(object):
         self.test_activate_baseline = True
         self.test_activate_calibration = True  # Switch to True to calibrate model.
         self.test_activate_prophet = True  # Turn on or off the Prophet feature
-        self.test_adstock = 'geometric'  # geometric or weibull. weibull is more flexible, et has one more parameter and thus takes longer
         self.test_baseVarName = ['competitor_sales_B']  # typically competitors, price  promotion, temperature, unemployment rate etc
         self.test_baseVarSign = ['negative']  # c(default, positive, and negative), control the signs of coefficients for baseline variables
         self.test_cores = 6  # User needs to set these cores depending upon the cores n local machine
@@ -48,13 +52,11 @@ class Robyn(object):
         self.test_factorVarName = []
         self.test_fixed_lambda = None
         self.test_fixed_out = False
-        self.test_hyperBoundLocal = None
         self.test_hyperOptimAlgo = 'DiscreteOnePlusOne'  # selected algorithm for Nevergrad, the gradient-free optimisation library ttps =//facebookresearch.github.io/nevergrad/self.test_index.html
         self.test_iter = 500  # number of allowed iterations per trial. 500 is recommended
         self.test_lambda_ = 1
         self.test_lambda_n = 100
         self.test_lower_limits = [0, 0, 0, 0]
-        self.test_mediaSpendName = ['tv_S', 'ooh_S', 'print_S', 'facebook_S', 'search_S']
         self.test_mediaVarName = ['tv_S', 'ooh_S', 'print_S', 'facebook_I', 'search_clicks_P']  # we recommend to use media exposure metrics like impressions, GRP etc for the model. If not applicable, use spend instead
         self.test_mediaVarSign = ['positive', 'positive', 'positive', 'positive', 'positive']
         self.test_modTrainSize = 0.74  # 0.74 means taking 74% of data to train and 0% to test the model.
@@ -74,8 +76,22 @@ class Robyn(object):
         # check_conditions()
         pass
 
-    def get_hypernames(self):
-        pass
+    @staticmethod
+    def get_hypernames(names_media_variables: str, adstock_type='geometric'):
+        """
+        :param names_media_variables: list of media channels
+        :param adstock_type: chosen adstock (geometric or weibull)
+        :return: crossed list of adstock parameters and media channels
+        """
+
+        if adstock_type == "geometric":
+            global_name = ["thetas", "alphas", "gammas"]
+            local_name = sorted(list([i + "_" + str(j) for i in names_media_variables for j in global_name]))
+        elif adstock_type == "weibull":
+            global_name = ["shapes", "scales", "alphas", "gammas"]
+            local_name = sorted(list([i + "_" + str(j) for i in names_media_variables for j in global_name]))
+
+        return local_name
 
     @staticmethod
     def michaelis_menten(spend, vmax, km):
@@ -192,7 +208,7 @@ class Robyn(object):
         y_train_pred = y_train_pred.reshape(len(y_train_pred), )  # reshape to be of format (n,)
 
         # Calc r-squared on training set
-        rsq_train = rsq(true=y_train, predicted=y_train_pred)
+        rsq_train = self.rsq(val_actual=y_train, val_predicted=y_train_pred)
 
         # Get coefficients
         coefs = mod[0]
@@ -209,8 +225,118 @@ class Robyn(object):
 
         self.mod = mod_out
 
-    def fit(self, df):  # This replace the original mmm + Robyn functions
-        pass
+    def fit(self,
+            df,
+            adstock_type='geometric',
+            optimizer_name='DiscreteOnePlusOne',
+            set_iter=100,
+            set_cores=6,
+            lambda_n=100,
+            fixed_out=False,
+            fixed_lambda=None):  # This replaces the original mmm + Robyn functions
+
+        ################################################
+        # Collect hyperparameters
+
+        # Expand media spend names to to have the hyperparameter names needed based on adstock type
+        names_hyper_parameter_sample_names = \
+            self.get_hypernames(names_media_variables=self.names_media_spend, adstock_type=adstock_type)
+        # names_hyper_parameter_sample_names = \
+        #     get_hypernames(names_media_variables=names_media_spend, adstock_type=adstock_type)
+
+        if not fixed_out:
+            # input_collect = # todo not sure what this is.  Finish it.
+            input_collect =
+
+        ################################################
+        # Get spend share
+
+        ################################################
+        # Setup environment
+
+        # Get environment for parallel backend
+
+        # available optimizers in ng
+        # optimizer_name <- "DoubleFastGADiscreteOnePlusOne"
+        # optimizer_name <- "OnePlusOne"
+        # optimizer_name <- "DE"
+        # optimizer_name <- "RandomSearch"
+        # optimizer_name <- "TwoPointsDE"
+        # optimizer_name <- "Powell"
+        # optimizer_name <- "MetaModel"  CRASH !!!!
+        # optimizer_name <- "SQP"
+        # optimizer_name <- "Cobyla"
+        # optimizer_name <- "NaiveTBPSA"
+        # optimizer_name <- "DiscreteOnePlusOne"
+        # optimizer_name <- "cGA"
+        # optimizer_name <- "ScrHammersleySearch"
+
+        ################################################
+        # Start Nevergrad loop
+
+        # Set iterations
+
+        # Start Nevergrad optimiser
+
+        # Start loop
+
+        # Get hyperparameter sample with ask
+
+        # Scale sample to given bounds
+
+        # Add fixed hyperparameters
+
+        # Parallel start
+
+        #####################################
+        # Get hyperparameter sample
+
+        # Tranform media with hyperparameters
+
+        #####################################
+        # Split and prepare data for modelling
+
+        # Contrast matrix because glmnet does not treat categorical variables
+
+        # Define sign control
+
+        #####################################
+        # Dit ridge regression with x-validation
+
+        #####################################
+        # Refit ridge regression with selected lambda from x-validation
+
+        # If no lift calibration, refit using best lambda
+
+        #####################################
+        # Get calibration mape
+
+        #####################################
+        # Calculate multi-objectives for pareto optimality
+
+        # Decomp objective: sum of squared distance between decomp share and spend share to be minimised
+
+        # Adstock objective: sum of squared infinite sum of decay to be minimised? maybe not necessary
+
+        # Calibration objective: not calibration: mse, decomp.rssd, if calibration: mse, decom.rssd, mape_lift
+
+        #####################################
+        # Collect output
+
+        # End dopar
+        # End parallel
+
+        #####################################
+        # Nevergrad tells objectives
+
+        # End NG loop
+        # End system.time
+
+        #####################################
+        # Get nevergrad pareto results
+
+        #####################################
+        # Final result collect
 
     def budget_allocator(self, model_id):  # This is the last step_model allocation
         pass
