@@ -246,7 +246,9 @@ class Robyn(object):
 
         if not fixed_out:
             # input_collect = # todo not sure what this is.  Finish it.
-            input_collect =
+            # todo collects results for parameters?
+            input_collect = self.hyperBoundLocal
+            # input_collect = None
 
         ################################################
         # Get spend share
