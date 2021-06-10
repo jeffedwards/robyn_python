@@ -169,7 +169,7 @@ class Robyn(object):
                         upper.limits=upper_limits,
                         intercept=FALSE
                         )
-                    }  
+                    }
                 }
             ''')
         r_glmnet = ro.globalenv['r_glmnet']
