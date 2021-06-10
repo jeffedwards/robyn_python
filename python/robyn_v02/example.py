@@ -20,6 +20,7 @@ robyn = r.Robyn()
 
 # See a parameter
 robyn.test_y_train
+robyn.iterations
 
 # See all variables
 robyn.__dict__
