@@ -40,7 +40,7 @@ robyn.mod
 
 
 ########################################################################################################################
-# SCRIPT
+# SCRIPT - DEMO OF HOW A USER WOULD USE THE PACKAGE
 
 # INITIALIZE OBJECT
 robyn = r.Robyn()
@@ -48,8 +48,11 @@ robyn = r.Robyn()
 # IMPORT DATA SET FOR PREDICTIONS
 df = pd.read_csv('source/de_simulated_data.csv')
 
+# SET HYPERPARAMETER BOUNDS
+robyn.set_param_bounds()
+
 # PREPARE DATA FOR MODELING
-df_transformed = robyn.input_wrangling(df)
+df_mod = robyn.input_wrangling(df)
 
 # FIT MODEL
 robyn.fit(df=df_transformed)
