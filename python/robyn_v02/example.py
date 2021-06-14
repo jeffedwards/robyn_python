@@ -15,8 +15,8 @@ il.reload(r)
 ########################################################################################################################
 # EXAMPLES - HOW TO USE THE CLASS
 
-# Initialize object
-robyn = r.Robyn()
+# Initialize a Robyn object
+robyn = r.Robyn(country="DE", dateVarName='Date', depVarName='revenue', mediaVarName=[])
 
 # See a parameter
 robyn.test_y_train
@@ -42,22 +42,28 @@ robyn.mod
 ########################################################################################################################
 # SCRIPT - DEMO OF HOW A USER WOULD USE THE PACKAGE
 
-# INITIALIZE OBJECT
-robyn = r.Robyn()
+# Step 1: INITIALIZE OBJECT
+# status: working version
+robyn = r.Robyn(country="DE", dateVarName='Date', depVarName='revenue'
+                , mediaVarName=["tv_S", "ooh_S", "print_S", "facebook_I", "search_clicks_P"])
 
-# IMPORT DATA SET FOR PREDICTIONS
+# Step 2: IMPORT DATA SET FOR PREDICTIONS
 df = pd.read_csv('source/de_simulated_data.csv')
 
-# SET HYPERPARAMETER BOUNDS
+# Step 3: USER SET HYPERPARAMETER BOUNDS
+# status: #TODO needs to be implemented
 robyn.set_param_bounds()
 
-# PREPARE DATA FOR MODELING
+# Step 4: PREPARE DATA FOR MODELING
+# Status: working version
 df_mod = robyn.input_wrangling(df)
 
-# FIT MODEL
-robyn.fit(df=df_transformed)
+# Step 5: FIT MODEL
+# status #TODO in progress mmm() and fit(), the fit() function is the robyn() function in the R version
+robyn.fit(df=df_mod)
 
-# BUDGE ALLOCATOR
+# Step 6: BUDGET ALLOCATOR
+# status: #TODO needs to be implemented
 robyn.allocate_budget(modID="3_10_2",
                       scenario="max_historical_response",
                       channel_constr_low=[0.7, 0.75, 0.60, 0.8, 0.65],

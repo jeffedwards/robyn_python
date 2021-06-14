@@ -30,20 +30,20 @@ from sklearn.metrics import r2_score
 
 class Robyn(object):
 
-    def __init__(self):
+    def __init__(self, country, dateVarName, depVarName, mediaVarName):
 
         # todo comprehensive documentation on each variable
 
-        self.country = 'DE'
-        self.dateVarName = 'DATE'
-        self.depVarName = 'revenue'
+        self.country = country
+        self.dateVarName = dateVarName
+        self.depVarName = depVarName
         self.activate_prophet = True
         self.prophet = ["trend", "season", "holiday"]
         self.prophetVarSign = ["default", "default", "default"]
         self.activate_baseline = True
         self.baseVarName = ['competitor_sales_B']
         self.baseVarSign = ['negative']
-        self.mediaVarName = ["tv_S", "ooh_S", "print_S", "facebook_I", "search_clicks_P"]
+        self.mediaVarName = mediaVarName
         self.mediaSpendName = ["tv_S", "ooh_S",	"print_S", "facebook_S", "search_S"]
         self.mediaVarSign = ["positive", "positive", "positive", "positive", "positive"]
         self.factorVarName = []
@@ -390,6 +390,11 @@ class Robyn(object):
 
 
     def set_param_bounds(self):
+        """
+
+        :return:
+        """
+
         pass
 
     def get_hypernames(self):
