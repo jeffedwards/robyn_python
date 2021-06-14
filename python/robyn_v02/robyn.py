@@ -11,6 +11,7 @@ import pandas as pd
 import rpy2.robjects as ro
 from rpy2.robjects import numpy2ri
 
+# hey Thami
 
 ########################################################################################################################
 # MAIN
@@ -32,6 +33,7 @@ class Robyn(object):
         self.adstock_type = 'geometric'  # geometric or weibull. weibull is more flexible, et has one more parameter and thus takes longer
         self.hyperBoundLocal = None
         self.names_media_spend = ['tv_S', 'ooh_S', 'print_S', 'facebook_S', 'search_S']
+        self.iterations = 500  # number of allowed iterations per trial. 500 is recommended
 
         # todo Does it make sense to just get these from the column names in a data frame?
 
@@ -53,7 +55,6 @@ class Robyn(object):
         self.test_fixed_lambda = None
         self.test_fixed_out = False
         self.test_hyperOptimAlgo = 'DiscreteOnePlusOne'  # selected algorithm for Nevergrad, the gradient-free optimisation library ttps =//facebookresearch.github.io/nevergrad/self.test_index.html
-        self.test_iter = 500  # number of allowed iterations per trial. 500 is recommended
         self.test_lambda_ = 1
         self.test_lambda_n = 100
         self.test_lower_limits = [0, 0, 0, 0]
@@ -169,7 +170,7 @@ class Robyn(object):
                         upper.limits=upper_limits,
                         intercept=FALSE
                         )
-                    }  
+                    }
                 }
             ''')
         r_glmnet = ro.globalenv['r_glmnet']
@@ -246,7 +247,9 @@ class Robyn(object):
 
         if not fixed_out:
             # input_collect = # todo not sure what this is.  Finish it.
-            input_collect =
+            # todo collects results for parameters?
+            input_collect = self.hyperBoundLocal
+            # input_collect = None
 
         ################################################
         # Get spend share
@@ -275,6 +278,10 @@ class Robyn(object):
         # Start Nevergrad loop
 
         # Set iterations
+        self.iterations = set_iter
+        x = None
+        if x == 'fake':
+            iter = self.iterations
 
         # Start Nevergrad optimiser
 
