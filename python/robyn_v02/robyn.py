@@ -885,8 +885,60 @@ class Robyn(object):
         #####################################
         # Final result collect
 
-    def fit(self):
-        pass
+    def fit(self,
+            df,
+            optimizer_name=set_hyperOptimAlgo,
+            set_trial=100,
+            set_cores=12,
+            fixed_out=False,
+            fixed_hyppar_dt=None
+            ):
 
-    def budget_allocator(self, model_id):  # This is the last step_model allocation
+        ## todo need to figure out what fixed is
+        plot_folder = getwd()
+        pareto_fronts = np.array[1, 2, 3]
+
+        ### start system time
+
+        # t0 <- Sys.time()
+
+        ### check if plotting directory exists
+
+        # if (!dir.exists(plot_folder)) {
+        # plot_folder < - getwd()
+        # message("provided plot_folder doesn't exist. Using default plot_folder = getwd(): ", getwd())
+        # }
+
+        ### run mmm function on set_trials
+
+        hyperparameter_fixed = pd.DataFrame.from_dict(set_hyperBoundLocal)
+        hypParamSamName = self.get_hypernames()
+
+        if fixed_out:
+
+            ### run mmm function if using old model result tables
+
+            if fixed.hyppar.dt.isna().any(axis=None):
+                raise ValueError(
+                    'when fixed_out=T, please provide the table model_output_resultHypParam from previous runs or pareto_hyperparameters.csv with desired model IDs')
+
+            ### check if hypParamSamName + 'lambda' is in fixed.hyppar.dt columns
+
+            # if (!all(c(hypParamSamName, "lambda") %in% names(fixed.hyppar.dt))) {stop("fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID")}
+            # if any('lambdas' in s for s in hypParamSamName):
+            #    raise ValueError('fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID')
+
+            model_output_collect = []
+
+            ### call mmm function with inputs
+
+            model_output_collect[[1]] = self.mmm(fixed.hyppar.dt[, hypParamSamName, with = F],
+            set_iter = set_iter
+                                           ,set_cores = set_cores
+                                           ,optimizer_name = optimizer_name
+                                           ,fixed.out = T
+                                           ,fixed.lambda = unlist(fixed.hyppar.dt$lambda))
+
+
+def budget_allocator(self, model_id):  # This is the last step_model allocation
         pass
