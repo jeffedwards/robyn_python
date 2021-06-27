@@ -15,6 +15,7 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 import math
 import os
+import time
 from prophet import Prophet
 # import weibull as weibull
 from scipy import stats
@@ -894,13 +895,13 @@ class Robyn(object):
             fixed_hyppar_dt=None
             ):
 
-        ## todo need to figure out what fixed is
-        plot_folder = getwd()
+        ## todo need to figure out what fixed is and where set_hyperOptimAlgo will come from
+        plot_folder = os.getcwd()
         pareto_fronts = np.array[1, 2, 3]
 
         ### start system time
 
-        # t0 <- Sys.time()
+        t0 = time.time()
 
         ### check if plotting directory exists
 
@@ -915,10 +916,11 @@ class Robyn(object):
         hypParamSamName = self.get_hypernames()
 
         if fixed_out:
+            ## todo fill out when fixed_out is actually true (when the user already has models built)
 
             ### run mmm function if using old model result tables
 
-            if fixed.hyppar.dt.isna().any(axis=None):
+            if fixed_hyppar_dt.isna().any(axis=None):
                 raise ValueError(
                     'when fixed_out=T, please provide the table model_output_resultHypParam from previous runs or pareto_hyperparameters.csv with desired model IDs')
 
@@ -932,12 +934,12 @@ class Robyn(object):
 
             ### call mmm function with inputs
 
-            model_output_collect[[1]] = self.mmm(fixed.hyppar.dt[, hypParamSamName, with = F],
-            set_iter = set_iter
-                                           ,set_cores = set_cores
-                                           ,optimizer_name = optimizer_name
-                                           ,fixed.out = T
-                                           ,fixed.lambda = unlist(fixed.hyppar.dt$lambda))
+            model_output_collect[[1]] = self.mmm(fixed_hyppar_dt#[, hypParamSamName, with = F]
+                                                 ,set_iter = set_iter
+                                                 ,set_cores = set_cores
+                                                 ,optimizer_name = optimizer_name
+                                                 ,fixed.out = T
+            ,fixed.lambda = unlist(fixed.hyppar.dt$lambda))
 
 
 def budget_allocator(self, model_id):  # This is the last step_model allocation
