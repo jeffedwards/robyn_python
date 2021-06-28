@@ -15,6 +15,7 @@ from datetime import timedelta
 import matplotlib.pyplot as plt
 import math
 import os
+import time
 from prophet import Prophet
 # import weibull as weibull
 from scipy import stats
@@ -885,8 +886,69 @@ class Robyn(object):
         #####################################
         # Final result collect
 
-    def fit(self):
-        pass
+    def fit(self,
+            df,
+            optimizer_name=set_hyperOptimAlgo,
+            set_trial=100,
+            set_cores=12,
+            fixed_out=False,
+            fixed_hyppar_dt=None
+            ):
 
-    def budget_allocator(self, model_id):  # This is the last step_model allocation
+        ## todo need to figure out what fixed is and where set_hyperOptimAlgo will come from
+        plot_folder = os.getcwd()
+        pareto_fronts = np.array[1, 2, 3]
+
+        ### start system time
+
+        t0 = time.time()
+
+        ### check if plotting directory exists
+
+        # if (!dir.exists(plot_folder)) {
+        # plot_folder < - getwd()
+        # message("provided plot_folder doesn't exist. Using default plot_folder = getwd(): ", getwd())
+        # }
+
+        ### run mmm function on set_trials
+
+        hyperparameter_fixed = pd.DataFrame.from_dict(set_hyperBoundLocal)
+        hypParamSamName = self.get_hypernames()
+
+        if fixed_out:
+            ## todo fill out when fixed_out is actually true (when the user already has models built)
+
+            ### run mmm function if using old model result tables
+
+            if fixed_hyppar_dt.isna().any(axis=None):
+                raise ValueError(
+                    'when fixed_out=T, please provide the table model_output_resultHypParam from previous runs or pareto_hyperparameters.csv with desired model IDs')
+
+            ### check if hypParamSamName + 'lambda' is in fixed.hyppar.dt columns
+
+            # if (!all(c(hypParamSamName, "lambda") %in% names(fixed.hyppar.dt))) {stop("fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID")}
+            # if any('lambdas' in s for s in hypParamSamName):
+            #    raise ValueError('fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID')
+
+            model_output_collect = []
+            model_output_collect[[1]] = self.mmm()
+            ## todo finish the rest of the mmm portion of using the old model results
+
+        else if hyperparameter_fixed:
+        ## Run f.mmm on set_trials if hyperparameters are all fixed
+
+        model_output_collect = []
+        model_output_collect[[1]] = self.mmm(set_hyperBoundLocal,
+                                             set_iter = 1,
+                                             set_cores = 1,
+                                             optimizer_name = optimizer_name)
+
+        ## model_output_collect[[1]]$trials <- 1
+
+        else:
+        ## Run f.mmm on set_trials if hyperparameters are not all fixed
+
+
+
+def budget_allocator(self, model_id):  # This is the last step_model allocation
         pass
