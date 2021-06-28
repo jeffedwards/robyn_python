@@ -931,15 +931,23 @@ class Robyn(object):
             #    raise ValueError('fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID')
 
             model_output_collect = []
+            model_output_collect[[1]] = self.mmm()
+            ## todo finish the rest of the mmm portion of using the old model results
 
-            ### call mmm function with inputs
+        else if hyperparameter_fixed:
+        ## Run f.mmm on set_trials if hyperparameters are all fixed
 
-            model_output_collect[[1]] = self.mmm(fixed_hyppar_dt#[, hypParamSamName, with = F]
-                                                 ,set_iter = set_iter
-                                                 ,set_cores = set_cores
-                                                 ,optimizer_name = optimizer_name
-                                                 ,fixed.out = T
-            ,fixed.lambda = unlist(fixed.hyppar.dt$lambda))
+        model_output_collect = []
+        model_output_collect[[1]] = self.mmm(set_hyperBoundLocal,
+                                             set_iter = 1,
+                                             set_cores = 1,
+                                             optimizer_name = optimizer_name)
+
+        ## model_output_collect[[1]]$trials <- 1
+
+        else:
+        ## Run f.mmm on set_trials if hyperparameters are not all fixed
+
 
 
 def budget_allocator(self, model_id):  # This is the last step_model allocation
