@@ -23,7 +23,7 @@ from scipy.optimize import curve_fit
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
-from python.robyn_v02 import robyn as r
+from pypref import prefclasses as p
 
 
 
@@ -952,8 +952,18 @@ class Robyn(object):
             dt_IDmatch = pd.DataFrame({'solID': fixed_hyppar_dt['solID'],
                                        'iterPar': model_output_collect['resultHypParam']['resultCollect']['resultHypParam']['iterPar']})
 
-            ## todo understand R version syntax
-            model_output_collect['resultHypParam']['resultCollect']['resultHypParam']['solID'] = dt_IDmatch['solID']
+            model_output_collect['resultHypParam']['resultCollect']['resultHypParam'] = \
+                pd.merge(model_output_collect['resultHypParam']['resultCollect']['resultHypParam'], dt_IDmatch,
+                         on='iterPar')
+            model_output_collect['resultHypParam']['resultCollect']['xDecompAgg'] = \
+                pd.merge(model_output_collect['resultHypParam']['resultCollect']['xDecompAgg'], dt_IDmatch,
+                         on='iterPar')
+            model_output_collect['resultHypParam']['resultCollect']['xDecompVec'] = \
+                pd.merge(model_output_collect['resultHypParam']['resultCollect']['xDecompVec'], dt_IDmatch,
+                         on='iterPar')
+            model_output_collect['resultHypParam']['resultCollect']['decompSpendDist'] = \
+                pd.merge(model_output_collect['resultHypParam']['resultCollect']['decompSpendDist'], dt_IDmatch,
+                         on='iterPar')
 
             print("\n######################\nHyperparameters are all fixed\n######################\n")
             print(model_output_collect['resultHypParam']['resultCollect']['xDecompAgg'])
@@ -970,17 +980,18 @@ class Robyn(object):
             print(model_output_collect['resultHypParam']['resultCollect']['xDecompAgg'])
 
         else:
-            ng_out = []
+            ng_out = {}
             ng_algos = optimizer_name
             t0 = time.time()
             for optmz in ng_algos:
-                ng_collect = []
-                model_output_collect = []
+                ng_collect = {}
+                model_output_collect = {}
                 for ngt in range(set_trial-1):
                     if not self.activate_calibration:
                         print("\nRunning trial nr.", ngt,"out of",set_trial,"...\n")
                     else:
                         print("\nRunning trial nr.", ngt,"out of",set_trial,"with calibration...\n")
+                    ## todo here we are assume model_output to be nested dict
                     model_output = self.mmm(self.hyperBounds, set_iter=self.iter, set_cores=self.cores,
                                             optimizer_name=optmz)
                     check_coef0 = any(model_output['resultCollect']['decompSpendDist']['decomp.rssd'] == math.inf)
@@ -994,19 +1005,21 @@ class Robyn(object):
                                                                       "on theta (max.reco. c(0, 0.9) ) and gamma (max.reco. c(0.1, 1) ) to give Robyn more freedom\n2. split "
                                                                       "media into sub-channels, and/or aggregate similar channels, and/or introduce other media\n3. increase trials to get more samples\n")
                     model_output['trials'] = ngt
-                    ng_collect
-                ng_collect.append(ng_collect)
-                #todo pypref package
-                px = low()
+                    ng_collect[str(ngt)] = model_output['resultCollect']['paretoFront']
+                    ng_collect[str(ngt)]['iters'] = self.iter
+                    ng_collect[str(ngt)]['ng_optmz'] = optmz
+                    model_output_collect[str(ngt)] = model_output
 
-
-
-
-
+                # todo type of nglist?
+                px = p.low(ng_collect['nrmse']) * p.low(ng_collect['decomp.rssd'])
+                ng_collect = p.pref.psel(ng_collect, px, top=len(ng_collect)).sort_values(by=['trials','nrmse'])
+                ng_out =
+            ng_out = ng_out.append(ng_out)
+            ng_out.rename(columns={'.level', 'manual_pareto'})
 
         #### Collect results for plotting
 
-        return {}
+        return model_output_collect
 
 
 
