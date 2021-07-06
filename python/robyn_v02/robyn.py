@@ -23,6 +23,10 @@ from scipy.optimize import curve_fit
 from sklearn import preprocessing
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
+from python.robyn_v02 import robyn as r
+
+
+
 
 
 ########################################################################################################################
@@ -67,6 +71,8 @@ class Robyn(object):
         self.getSpendSum = None
         self.modelRecurrance = None
         self.forecastRecurrance = None
+
+        self.fixed_hyppar_dt = None
 
 
         # self.set_hyperparmeter_bounds()
@@ -887,17 +893,25 @@ class Robyn(object):
         # Final result collect
 
     def fit(self,
-            df,
-            optimizer_name=set_hyperOptimAlgo,
-            set_trial=100,
-            set_cores=12,
+            optimizer_name=None,
+            set_trial=None,
+            set_cores=None,
             fixed_out=False,
-            fixed_hyppar_dt=None
+            fixed_hyppar_dt=None,
+            pareto_fronts=[1,2,3]
             ):
 
-        ## todo need to figure out what fixed is and where set_hyperOptimAlgo will come from
-        plot_folder = os.getcwd()
-        pareto_fronts = np.array[1, 2, 3]
+        if optimizer_name is None:
+            optimizer_name = self.hyperOptimAlgo
+        if set_trial is None:
+            set_trial = self.trial
+        if set_cores is None:
+            set_cores = self.cores
+        if fixed_hyppar_dt is None:
+            fixed_hyppar_dt = self.fixed_hyppar_dt
+
+        #plot_folder = os.getcwd()
+        #pareto_fronts = np.array[1, 2, 3]
 
         ### start system time
 
@@ -911,42 +925,88 @@ class Robyn(object):
         # }
 
         ### run mmm function on set_trials
-
-        hyperparameter_fixed = pd.DataFrame.from_dict(set_hyperBoundLocal)
+        ## todo set_hyperBoundLocal type?? assume dict
+        hyperparameter_fixed = all(value == 0 for value in self.hyperBounds.values())
         hypParamSamName = self.get_hypernames()
 
         if fixed_out:
-            ## todo fill out when fixed_out is actually true (when the user already has models built)
 
             ### run mmm function if using old model result tables
 
-            if fixed_hyppar_dt.isna().any(axis=None):
+            if fixed_hyppar_dt is None:
                 raise ValueError(
-                    'when fixed_out=T, please provide the table model_output_resultHypParam from previous runs or pareto_hyperparameters.csv with desired model IDs')
+                    'when fixed_out=T, please provide the table model_output_resultHypParam from previous runs or '
+                    'pareto_hyperparameters.csv with desired model IDs')
+            if not all([True for x in hypParamSamName.append('lambda') if x in fixed_hyppar_dt.columns]):
+                raise ValueError('fixed.hyppar.dt is provided with wrong input. '
+                                 'please provide the table model_output_collect$resultHypParam from previous runs or '
+                                 'pareto_hyperparameters.csv with desired model ID')
 
-            ### check if hypParamSamName + 'lambda' is in fixed.hyppar.dt columns
+            model_output_collect = {}
+            model_output_collect['resultHypParam'] = self.mmm(fixed_hyppar_dt['hypParamSamName'], set_iter=self.iter,
+                                                              set_cores=set_cores, optimizer_name=optimizer_name,
+                                                              fixed_out=True, fixed_lambda=list(fixed_hyppar_dt['lambda']))
+            model_output_collect['resultHypParam'] = model_output_collect['resultHypParam']['trials'] = 1
+            model_output_collect['resultHypParam']['resultCollect']['resultHypParam'] = \
+                model_output_collect['resultHypParam']['resultCollect']['resultHypParam'].sort_values(by='iterPar')
+            dt_IDmatch = pd.DataFrame({'solID': fixed_hyppar_dt['solID'],
+                                       'iterPar': model_output_collect['resultHypParam']['resultCollect']['resultHypParam']['iterPar']})
 
-            # if (!all(c(hypParamSamName, "lambda") %in% names(fixed.hyppar.dt))) {stop("fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID")}
-            # if any('lambdas' in s for s in hypParamSamName):
-            #    raise ValueError('fixed.hyppar.dt is provided with wrong input. please provide the table model_output_collect$resultHypParam from previous runs or pareto_hyperparameters.csv with desired model ID')
+            ## todo understand R version syntax
+            model_output_collect['resultHypParam']['resultCollect']['resultHypParam']['solID'] = dt_IDmatch['solID']
 
-            model_output_collect = []
-            model_output_collect[[1]] = self.mmm()
-            ## todo finish the rest of the mmm portion of using the old model results
+            print("\n######################\nHyperparameters are all fixed\n######################\n")
+            print(model_output_collect['resultHypParam']['resultCollect']['xDecompAgg'])
 
-        else if hyperparameter_fixed:
+        elif hyperparameter_fixed:
         ## Run f.mmm on set_trials if hyperparameters are all fixed
 
-        model_output_collect = []
-        model_output_collect[[1]] = self.mmm(set_hyperBoundLocal,
-                                             set_iter = 1,
-                                             set_cores = 1,
-                                             optimizer_name = optimizer_name)
+            model_output_collect = {}
+            model_output_collect['resultHypParam'] = self.mmm(self.hyperBounds, set_iter = 1, set_cores = 1,
+                                                 optimizer_name = optimizer_name)
 
-        ## model_output_collect[[1]]$trials <- 1
+            model_output_collect['resultHypParam'] = model_output_collect['resultHypParam']['trials'] = 1
+            print("\n######################\nHyperparameters are all fixed\n######################\n")
+            print(model_output_collect['resultHypParam']['resultCollect']['xDecompAgg'])
 
         else:
-        ## Run f.mmm on set_trials if hyperparameters are not all fixed
+            ng_out = []
+            ng_algos = optimizer_name
+            t0 = time.time()
+            for optmz in ng_algos:
+                ng_collect = []
+                model_output_collect = []
+                for ngt in range(set_trial-1):
+                    if not self.activate_calibration:
+                        print("\nRunning trial nr.", ngt,"out of",set_trial,"...\n")
+                    else:
+                        print("\nRunning trial nr.", ngt,"out of",set_trial,"with calibration...\n")
+                    model_output = self.mmm(self.hyperBounds, set_iter=self.iter, set_cores=self.cores,
+                                            optimizer_name=optmz)
+                    check_coef0 = any(model_output['resultCollect']['decompSpendDist']['decomp.rssd'] == math.inf)
+                    if check_coef0:
+                        num_coef0_mod = model_output
+                        if num_coef0_mod > self.iter:
+                            num_coef0_mod = self.iter
+                        print("\nThis trial contains ", num_coef0_mod," iterations with all 0 media coefficient. Please "
+                                                                      "reconsider your media variable choice if the pareto choices are unreasonable."
+                                                                      "\nRecommendations are: \n1. increase hyperparameter ranges for 0-coef channels "
+                                                                      "on theta (max.reco. c(0, 0.9) ) and gamma (max.reco. c(0.1, 1) ) to give Robyn more freedom\n2. split "
+                                                                      "media into sub-channels, and/or aggregate similar channels, and/or introduce other media\n3. increase trials to get more samples\n")
+                    model_output['trials'] = ngt
+                    ng_collect
+                ng_collect.append(ng_collect)
+                #todo pypref package
+                px = low()
+
+
+
+
+
+
+        #### Collect results for plotting
+
+        return {}
 
 
 
