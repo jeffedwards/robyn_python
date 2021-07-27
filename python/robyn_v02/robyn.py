@@ -805,6 +805,19 @@ class Robyn(object):
         # Setup environment
 
         # Get environment for parallel backend
+        dt_mod = df
+        mediaVarName = self.mediaVarName
+        adstock_type = self.adstock_type
+        # set_modTrainSize = set_modTrainSize
+        activate_calibration = self.activate_calibration
+        baseVarSign = self.baseVarSign
+        mediaVarSign = self.mediaVarSign
+        activate_prophet = self.activate_prophet
+        prophetVarSign = self.prophetVarSign
+        factorVarName = self.factorVarName
+        lift = self.lift
+
+        import nevergrad as ng
 
         # available optimizers in ng
         # optimizer_name <- "DoubleFastGADiscreteOnePlusOne"
