@@ -437,8 +437,11 @@ class Robyn(object):
         x_decayed = [x[0]] + [0] * (len(x) - 1)
         for i in range(1, len(x_decayed)):
             x_decayed[i] = x[i] + theta * x_decayed[i - 1]
+        thetaVecCum = theta
+        for t in range(1,len(x)):
+            thetaVecCum[t] = thetaVecCum[t-1] * theta
 
-        return x_decayed
+        return x_decayed, thetaVecCum
 
     @staticmethod
     def helperWeibull(x, y, vec_cum, n):
@@ -850,12 +853,40 @@ class Robyn(object):
         #####################################
         # Split and prepare data for modelling
 
+        dt_train = dt_modSaturated.copy()
+
         # Contrast matrix because glmnet does not treat categorical variables
+        y_train = dt_train['dep_var']
+        ## todo need to figure out how to use R function here
+        x_train =
 
         # Define sign control
+        dt_sign = dt_modSaturated.loc[:, dt_modSaturated.columns != 'dep_var']
+
+        x_sign < - c(prophet_signs, context_signs, paid_media_signs, organic_signs)
+        names(x_sign) < - c(prophet_vars, context_vars, paid_media_vars, organic_vars)
+        check_factor < - sapply(dt_sign, is.factor)
+
+        lower.limits < - c();
+        upper.limits < - c()
+
+        for (s in 1:length(check_factor)) {
+
+        if (check_factor[s] == TRUE) {
+        level.n < - length(levels(unlist(dt_sign[, s, with=FALSE])))
+        if (level.n <= 1) {stop("factor variables must have more than 1 level")}
+        lower_vec < - if (x_sign[s] == "positive") {rep(0, level.n-1)} else {rep(-Inf, level.n-1)}
+        upper_vec < - if (x_sign[s] == "negative") {rep(0, level.n-1)} else {rep(Inf, level.n-1)}
+        lower.limits < - c(lower.limits, lower_vec)
+        upper.limits < - c(upper.limits, upper_vec)
+        } else {
+        lower.limits < - c(lower.limits, ifelse(x_sign[s] == "positive", 0, -Inf))
+        upper.limits < - c(upper.limits, ifelse(x_sign[s] == "negative", 0, Inf))
+        }
+        }
 
         #####################################
-        # Dit ridge regression with x-validation
+        # Fit ridge regression with x-validation
 
         #####################################
         # Refit ridge regression with selected lambda from x-validation
