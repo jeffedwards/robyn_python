@@ -35,87 +35,80 @@ from pypref import prefclasses as p
 
 class Robyn(object):
 
-    def __init__(self, country, dateVarName, depVarName, mediaVarName):
+    def __init__(self, country, dateVarName, depVarName, mediaVarName, dt_input):
 
         # todo comprehensive documentation on each variable
 
-        self.country = country
-        self.dateVarName = dateVarName
-        self.depVarName = depVarName
-        self.activate_prophet = True
-        self.prophet = ["trend", "season", "holiday"]
-        self.prophetVarSign = ["default", "default", "default"]
-        self.activate_baseline = True
-        self.baseVarName = ['competitor_sales_B']
-        self.baseVarSign = ['negative']
-        self.mediaVarName = mediaVarName
-        self.mediaSpendName = ["tv_S", "ooh_S",	"print_S", "facebook_S", "search_S"]
-        self.mediaVarSign = ["positive", "positive", "positive", "positive", "positive"]
-        self.factorVarName = []
-        self.cores = 6
-        self.adstock_type = 'geometric'
-        self.iter = 500
-        self.hyperOptimAlgo = 'DiscreteOnePlusOne'
-        self.trial = 40
-        self.dayInterval = 7
-        self.activate_calibration = False
-        self.lift = pd.DataFrame()
-        self.hyperBounds = {}
-        self.df_holidays = pd.read_csv('source/holidays.csv')
+        # self.country = country
+        # self.dateVarName = dateVarName
+        # self.depVarName = depVarName
+        # self.activate_prophet = True
+        # self.prophet = ["trend", "season", "holiday"]
+        # self.prophetVarSign = ["default", "default", "default"]
+        # self.activate_baseline = True
+        # self.baseVarName = ['competitor_sales_B']
+        # self.baseVarSign = ['negative']
+        # self.mediaVarName = mediaVarName
+        # self.mediaSpendName = ["tv_S", "ooh_S",	"print_S", "facebook_S", "search_S"]
+        # self.mediaVarSign = ["positive", "positive", "positive", "positive", "positive"]
+        # self.factorVarName = []
+        # self.cores = 6
+        # self.adstock_type = 'geometric'
+        # self.iter = 500
+        # self.hyperOptimAlgo = 'DiscreteOnePlusOne'
+        # self.trial = 40
+        # self.dayInterval = 7
+        # self.activate_calibration = False
+        # self.lift = pd.DataFrame()
+        # self.hyperBounds = {}
+        # self.df_holidays = pd.read_csv('source/holidays.csv')
+        #
+        # self.plotNLSCollect = None
+        # self.modNLSCollect = None
+        # # self.hatNLSCollect = None
+        # self.mediaCostFactor = None
+        # self.costSelector = None
+        # self.getSpendSum = None
+        # self.modelRecurrance = None
+        # self.forecastRecurrance = None
+        #
+        # self.fixed_hyppar_dt = None
 
-        self.plotNLSCollect = None
-        self.modNLSCollect = None
-        # self.hatNLSCollect = None
-        self.mediaCostFactor = None
-        self.costSelector = None
-        self.getSpendSum = None
-        self.modelRecurrance = None
-        self.forecastRecurrance = None
-
-        self.fixed_hyppar_dt = None
 
 
-        # self.set_hyperparmeter_bounds()
-        # self.check_conditions()
-
-        # todo Variables.
-        # todo Global variables should be set in class.
-        # todo Function specific variables should set in the function.  Should add default values as much as possible.
-
-        # todo Does it make sense to just get these from the column names in a data frame?
-
-        # VARIABLES - WILL BE UPDATED
+        # R 2.1
+        self.dt_input = dt_input
+        self.dt_holidays = pd.read_csv('source/holidays.csv')
         self.mod = None
+        self.dt_modRollWind = None
+        self.xDecompAggPrev = None
+        self.date_var = None
+        self.dep_var = None
+        self.dep_var_type = None
+        self.prophet_vars = None
+        self.prophet_signs = None
+        self.prophet_country = None
+        self.context_vars = None
+        self.context_signs = None
+        self.paid_media_vars = None
+        self.paid_media_signs = None
+        self.paid_media_spends = None
+        self.organic_vars = None
+        self.organic_signs = None
+        self.factor_vars = None
+        self.cores = 1
+        self.window_start = None
+        self.window_end = None
+        self.adstock = None
+        self.iterations = 2000
+        self.nevergrad_algo = "TwoPointsDE"
+        self.trials = 5
+        self.hyperparameters = None
+        self.calibration_input = None
+        self.InputCollect = None
 
-        # VARIABLES - FOR TESTING
-        # TODO remove this section for production
-        self.test_activate_baseline = True
-        self.test_activate_calibration = True  # Switch to True to calibrate model.
-        self.test_activate_prophet = True  # Turn on or off the Prophet feature
-        self.test_baseVarName = ['competitor_sales_B']  # typically competitors, price  promotion, temperature, unemployment rate etc
-        self.test_baseVarSign = ['negative']  # c(default, positive, and negative), control the signs of coefficients for baseline variables
-        self.test_cores = 6  # User needs to set these cores depending upon the cores n local machine
-        self.test_country = 'DE'  # only one country allowed once. Including national holidays for 59 countries, whose list can be found on our github guide
-        self.test_dateVarName = 'DATE'  # date format must be 2020-01-01
-        self.test_depVarType = 'revenue'  # there should be only one dependent variable
-        self.test_factorVarName = []
-        self.test_fixed_lambda = None
-        self.test_fixed_out = False
-        self.test_hyperOptimAlgo = 'DiscreteOnePlusOne'  # selected algorithm for Nevergrad, the gradient-free optimisation library ttps =//facebookresearch.github.io/nevergrad/self.test_index.html
-        self.test_lambda_ = 1
-        self.test_lambda_n = 100
-        self.test_lower_limits = [0, 0, 0, 0]
-        self.test_mediaVarName = ['tv_S', 'ooh_S', 'print_S', 'facebook_I', 'search_clicks_P']  # we recommend to use media exposure metrics like impressions, GRP etc for the model. If not applicable, use spend instead
-        self.test_mediaVarSign = ['positive', 'positive', 'positive', 'positive', 'positive']
-        self.test_modTrainSize = 0.74  # 0.74 means taking 74% of data to train and 0% to test the model.
-        self.test_optimizer_name = 'DiscreteOnePlusOne'
-        self.test_plot_folder = '~/Documents/GitHub/plots'
-        self.test_prophet = ['trend', 'season', 'holiday']  # 'trend','season', 'weekday', 'holiday' are provided and case-sensitive. Recommend at least keeping Trend & Holidays
-        self.test_prophetVarSign = ['default', 'default', 'default']  # c('default', 'positive', and 'negative'). Recommend as default. Must be same length as set_prophet
-        self.test_trial = 80  # number of all
-        self.test_upper_limits = [10, 10, 10, 10]
-        self.test_x_train = np.array([[1, 1, 2], [3, 4, 2], [6, 5, 2], [5, 5, 3]])
-        self.test_y_train = np.array([1, 0, 0, 1])
+
+
 
     def check_conditions(self, dt_transform):
         """
@@ -169,7 +162,7 @@ class Robyn(object):
 
         return None
 
-    def input_wrangling(self, dt):
+    def robyn_engineering(self, dt):
         """
 
             :param dt:
@@ -179,6 +172,9 @@ class Robyn(object):
             :param set_hyperBoundLocal:
             :return: (DataFrame, dict)
             """
+
+
+
         dt_transform = dt.copy().reset_index()
         dt_transform = dt_transform.rename({self.dateVarName: 'ds'}, axis=1)
         dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
