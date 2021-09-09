@@ -437,11 +437,8 @@ class Robyn(object):
         x_decayed = [x[0]] + [0] * (len(x) - 1)
         for i in range(1, len(x_decayed)):
             x_decayed[i] = x[i] + theta * x_decayed[i - 1]
-        thetaVecCum = theta
-        for t in range(1,len(x)):
-            thetaVecCum[t] = thetaVecCum[t-1] * theta
 
-        return x_decayed, thetaVecCum
+        return x_decayed
 
     @staticmethod
     def helperWeibull(x, y, vec_cum, n):
@@ -805,9 +802,22 @@ class Robyn(object):
         # Get spend share
 
         ################################################
-        # Setup environment
+        ### Setup environment
 
         # Get environment for parallel backend
+        dt_mod = df
+        mediaVarName = self.mediaVarName
+        adstock_type = self.adstock_type
+        # set_modTrainSize = set_modTrainSize
+        activate_calibration = self.activate_calibration
+        baseVarSign = self.baseVarSign
+        mediaVarSign = self.mediaVarSign
+        activate_prophet = self.activate_prophet
+        prophetVarSign = self.prophetVarSign
+        factorVarName = self.factorVarName
+        lift = self.lift
+
+        import nevergrad as ng
 
         # available optimizers in ng
         # optimizer_name <- "DoubleFastGADiscreteOnePlusOne"
@@ -853,48 +863,88 @@ class Robyn(object):
         #####################################
         # Split and prepare data for modelling
 
-        dt_train = dt_modSaturated.copy()
-
         # Contrast matrix because glmnet does not treat categorical variables
-        y_train = dt_train['dep_var']
-        ## todo need to figure out how to use R function here
-        x_train =
 
         # Define sign control
-        dt_sign = dt_modSaturated.loc[:, dt_modSaturated.columns != 'dep_var']
-
-        x_sign < - c(prophet_signs, context_signs, paid_media_signs, organic_signs)
-        names(x_sign) < - c(prophet_vars, context_vars, paid_media_vars, organic_vars)
-        check_factor < - sapply(dt_sign, is.factor)
-
-        lower.limits < - c();
-        upper.limits < - c()
-
-        for (s in 1:length(check_factor)) {
-
-        if (check_factor[s] == TRUE) {
-        level.n < - length(levels(unlist(dt_sign[, s, with=FALSE])))
-        if (level.n <= 1) {stop("factor variables must have more than 1 level")}
-        lower_vec < - if (x_sign[s] == "positive") {rep(0, level.n-1)} else {rep(-Inf, level.n-1)}
-        upper_vec < - if (x_sign[s] == "negative") {rep(0, level.n-1)} else {rep(Inf, level.n-1)}
-        lower.limits < - c(lower.limits, lower_vec)
-        upper.limits < - c(upper.limits, upper_vec)
-        } else {
-        lower.limits < - c(lower.limits, ifelse(x_sign[s] == "positive", 0, -Inf))
-        upper.limits < - c(upper.limits, ifelse(x_sign[s] == "negative", 0, Inf))
-        }
-        }
 
         #####################################
-        # Fit ridge regression with x-validation
+        ### Fit ridge regression with x-validation
+
+        # TODO discussion on utlizing python glmnet instead of calling r function
+        # https://glmnet-python.readthedocs.io/en/latest/glmnet_vignette.html
+        # Seem to not work with windows
+
+        # Call R functions - to match outputs of Robyn in R
+        numpy2ri.activate()
+
+        # Define cv.glmnet model in r
+        ro.r('''
+                r_cv_glmnet <- function (x, y, family, alpha, lower_limits, upper_limits, type_measure) {
+                    library(glmnet)
+                    mod <- cv.glmnet(
+                            data.matrix(x),
+                            y=y,
+                            family=family,
+                            alpha=alpha,
+                            lower.limits=lower_limits,
+                            upper.limits=upper_limits,
+                            type.measure = type_measure
+                            )              
+                }
+            ''')
+        r_cv_glmnet = ro.globalenv['r_cv_glmnet']
+
+        # Create model
+        cvmod = r_cv_glmnet(x=x_train,
+                            y=ro.FloatVector(y_train),
+                            family="gaussian",
+                            alpha=0,
+                            #lambda_=lambda_,
+                            lower_limits=lower_limits,
+                            upper_limits=upper_limits,
+                            type_measure="mse"
+                            )
+
+        #TODO remove this section after de-bugging
+        '''
+        x = np.arange(1, 25).reshape(12, 2)
+        y = ro.FloatVector(np.array([0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0]))
+
+        mod = r_cv_glmnet(x=x,
+                          y=y,
+                          family="gaussian",
+                          alpha=0,
+                          lower_limits=0,
+                          upper_limits=1,
+                          type_measure="mse"
+                          )
+        mod[10]
+        '''
+
 
         #####################################
-        # Refit ridge regression with selected lambda from x-validation
+        ### Refit ridge regression with selected lambda from x-validation
+
 
         # If no lift calibration, refit using best lambda
+        if fixed_out:
+            mod_out = self.refit(x_train, y_train, lambda_=cvmod[10], lower_limits, upper_limits)
+            lambda_ = cvmod[10]
+        else:
+            mod_out = self.refit(x_train, y_train, lambda_=cvmod[0][i], lower_limits, upper_limits)
+            lambda_ = cvmod[0][i]
+
+        decomp_collect = self.decomp(coefs=mod_out['coefs'], dt_train, x_train, y_pred=mod_out['y_pred'], i)
+        nrmse = mod_out['nrmse_train']
+        mape = 0
+
 
         #####################################
         # Get calibration mape
+
+        if self.activate_calibration:
+
+
 
         #####################################
         # Calculate multi-objectives for pareto optimality
