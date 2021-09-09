@@ -438,7 +438,12 @@ class Robyn(object):
         for i in range(1, len(x_decayed)):
             x_decayed[i] = x[i] + theta * x_decayed[i - 1]
 
-        return x_decayed
+        thetaVecCum = theta
+        for t in range(1,len(x)):
+            thetaVecCum[t] = thetaVecCum[t-1] * theta
+
+        return x_decayed, thetaVecCum
+
 
     @staticmethod
     def helperWeibull(x, y, vec_cum, n):
