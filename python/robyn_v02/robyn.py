@@ -756,6 +756,8 @@ class Robyn(object):
                            intercept=False
                            )
 
+        df_int = 0 if mod[0][0] < 0 else 1
+
         # Run model
         ro.r('''
                     r_predict <- function(model, s, newx) {
@@ -767,7 +769,7 @@ class Robyn(object):
         y_train_pred = y_train_pred.reshape(len(y_train_pred), )  # reshape to be of format (n,)
 
         # Calc r-squared on training set
-        rsq_train = self.get_rsq(val_actual=y_train, val_predicted=y_train_pred)
+        rsq_train = self.get_rsq(val_actual=y_train, val_predicted=y_train_pred, p=len(x_train[0]), df_int=df_int)
 
         # Get coefficients
         coefs = mod[0]
@@ -780,7 +782,8 @@ class Robyn(object):
                    'nrmse_train': nrmse_train,
                    'coefs': coefs,
                    'y_pred': y_train_pred,
-                   'mod': mod}
+                   'mod': mod,
+                   'df_int': df_int}
 
         self.mod = mod_out
 
