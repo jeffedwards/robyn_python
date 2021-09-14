@@ -571,16 +571,26 @@ class Robyn(object):
         return x_out
 
     @staticmethod
-    def rsq(val_actual, val_predicted):
+    def get_rsq(val_actual, val_predicted, p = None, df_int = None ):
         # Changed "true" to val_actual because Python could misinterpret True
         """
         :param val_actual: actual value
         :param val_predicted: predicted value
+        :param p: number of independent variable
+        :param p: number of independent variable
         :return: r-squared
         """
         sse = sum((val_predicted - val_actual) ** 2)
         sst = sum((val_actual - sum(val_actual) / len(val_actual)) ** 2)
-        return 1 - sse / sst
+        rsq = 1 - sse / sst
+
+        # adjusted rsq formula / # n = num_obs, p = num_indepvar, rdf = n-p-1
+        if (p is not None) & (df_int is not None):
+            n = len(val_actual)
+            rdf = n - p - 1
+            rsq = 1- (1 - rsq) * ((n - df_int) / rdf)
+
+        return rsq
 
     @staticmethod
     def lambdaRidge(x, y, seq_len=100, lambda_min_ratio=0.0001):
@@ -757,7 +767,7 @@ class Robyn(object):
         y_train_pred = y_train_pred.reshape(len(y_train_pred), )  # reshape to be of format (n,)
 
         # Calc r-squared on training set
-        rsq_train = self.rsq(val_actual=y_train, val_predicted=y_train_pred)
+        rsq_train = self.get_rsq(val_actual=y_train, val_predicted=y_train_pred)
 
         # Get coefficients
         coefs = mod[0]
