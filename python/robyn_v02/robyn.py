@@ -83,6 +83,8 @@ class Robyn(object):
         self.dt_modRollWind = None
         self.xDecompAggPrev = None
         self.date_var = None
+        self.dayInterval = None
+        self.intervalType = None
         self.dep_var = None
         self.dep_var_type = None
         self.prophet_vars = None
@@ -99,16 +101,18 @@ class Robyn(object):
         self.cores = 1
         self.window_start = None
         self.window_end = None
+        self.rollingWindowStartWhich = None
+        self.rollingWindowEndWhich = None
+        self.rollingWindowLength = None
+        self.refreshAddedStart = None
         self.adstock = None
         self.iterations = 2000
         self.nevergrad_algo = "TwoPointsDE"
         self.trials = 5
         self.hyperparameters = None
         self.calibration_input = None
-        self.InputCollect = None
-
-
-
+        self.mediaVarCount = None
+        #self.InputCollect = None
 
     def check_conditions(self, dt_transform):
         """
@@ -174,108 +178,115 @@ class Robyn(object):
             """
 
 
-
+        dt_inputRollWind = dt[self.rollingWindowStartWhich:self.rollingWindowEndWhich+1]
         dt_transform = dt.copy().reset_index()
-        dt_transform = dt_transform.rename({self.dateVarName: 'ds'}, axis=1)
+        dt_transform = dt_transform.rename({self.date_var: 'ds'}, axis=1)
         dt_transform['ds'] = pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d')
-        dt_transform = dt_transform.rename({self.depVarName: 'depVar'}, axis=1)
+        dt_transform = dt_transform.rename({self.dep_var: 'depVar'}, axis=1)
+        dt_transformRollWind = dt_transform[self.rollingWindowStartWhich:self.rollingWindowEndWhich+1]
+
         self.df_holidays['ds'] = pd.to_datetime(self.df_holidays['ds'], format='%Y-%m-%d')
-        # check date format
-        try:
-            pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
-        except ValueError:
-            print('input date variable should have format "yyyy-mm-dd"')
-
-        # check variable existence
-        if not self.activate_prophet:
-            self.prophet = None
-            self.prophetVarSign = None
-
-        if not self.activate_baseline:
-            self.baseVarName = None
-            self.baseVarSign = None
-
-        if not self.activate_calibration:
-            self.lift = None
-
-        try:
-            self.mediaSpendName
-        except NameError:
-            print('set_mediaSpendName must be specified')
-
-        if len(self.mediaVarName) != len(self.mediaVarSign):
-            raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
-
-        #TODO new R version is now different
-        trainSize = round(dt_transform.shape[0] * d['set_modTrainSize'])
-        dt_train = dt_transform[self.mediaVarName].iloc[:trainSize, :]
-        train_all0 = dt_train.loc[:, dt_train.sum(axis=0) == 0]
-        if train_all0.shape[1] != 0:
-            raise ValueError('These media channels contains only 0 within training period. '
-                             'Recommendation: increase set_modTrainSize, remove or combine these channels')
-
-        dayInterval = dt_transform['ds'].nlargest(2)
-        dayInterval = (dayInterval.iloc[0] - dayInterval.iloc[1]).days
-        if dayInterval == 1:
-            intervalType = 'day'
-        elif dayInterval == 7:
-            intervalType = 'week'
-        elif 28 <= dayInterval <= 31:
-            intervalType = 'month'
-        else:
-            raise ValueError('input data has to be daily, weekly or monthly')
-        self.dayInterval = dayInterval
-        mediaVarCount = len(self.mediaVarName)
+        # # check date format
+        # try:
+        #     pd.to_datetime(dt_transform['ds'], format='%Y-%m-%d', errors='raise')
+        # except ValueError:
+        #     print('input date variable should have format "yyyy-mm-dd"')
+        #
+        # # check variable existence
+        # if not self.activate_prophet:
+        #     self.prophet = None
+        #     self.prophetVarSign = None
+        #
+        # if not self.activate_baseline:
+        #     self.baseVarName = None
+        #     self.baseVarSign = None
+        #
+        # if not self.activate_calibration:
+        #     self.lift = None
+        #
+        # try:
+        #     self.mediaSpendName
+        # except NameError:
+        #     print('set_mediaSpendName must be specified')
+        #
+        # if len(self.mediaVarName) != len(self.mediaVarSign):
+        #     raise ValueError('set_mediaVarName and set_mediaVarSign have to be the same length')
+        #
+        # trainSize = round(dt_transform.shape[0] * d['set_modTrainSize'])
+        # dt_train = dt_transform[self.mediaVarName].iloc[:trainSize, :]
+        # train_all0 = dt_train.loc[:, dt_train.sum(axis=0) == 0]
+        # if train_all0.shape[1] != 0:
+        #     raise ValueError('These media channels contains only 0 within training period. '
+        #                      'Recommendation: increase set_modTrainSize, remove or combine these channels')
+        #
+        # dayInterval = dt_transform['ds'].nlargest(2)
+        # dayInterval = (dayInterval.iloc[0] - dayInterval.iloc[1]).days
+        # if dayInterval == 1:
+        #     intervalType = 'day'
+        # elif dayInterval == 7:
+        #     intervalType = 'week'
+        # elif 28 <= dayInterval <= 31:
+        #     intervalType = 'month'
+        # else:
+        #     raise ValueError('input data has to be daily, weekly or monthly')
+        # self.dayInterval = dayInterval
+        # mediaVarCount = len(self.mediaVarName)
 
         ################################################################
         #### model reach metric from spend
-        mediaCostFactor = pd.DataFrame(dt_transform[self.mediaSpendName].sum(axis=0),
+        mediaCostFactor = pd.DataFrame(dt_inputRollWind[self.paid_media_spends].sum(axis=0),
                                        columns=['total_spend']).reset_index()
-        var_total = pd.DataFrame(dt_transform[self.mediaVarName].sum(axis=0), columns=['total_var']).reset_index()
+        var_total = pd.DataFrame(dt_inputRollWind[self.paid_media_vars].sum(axis=0), columns=['total_var']).reset_index()
         mediaCostFactor['mediaCostFactor'] = mediaCostFactor['total_spend'] / var_total['total_var']
         mediaCostFactor = mediaCostFactor.drop(columns=['total_spend'])
-        costSelector = pd.Series(self.mediaSpendName) != pd.Series(self.set_mediaVarName)
+        costSelector = pd.Series(self.paid_media_spends) != pd.Series(self.paid_media_vars)
 
         if len(costSelector) != 0:
             modNLSCollect = defaultdict()
             yhatCollect = []
             plotNLSCollect = []
-            for i in range(mediaVarCount - 1):
+            for i in range(self.mediaVarCount - 1):
                 if costSelector[i]:
-                    dt_spendModInput = pd.DataFrame(dt_transform.loc[:, self.mediaSpendName[i]])
-                    dt_spendModInput['reach'] = dt_transform.loc[:, self.mediaVarName[i]]
+                    dt_spendModInput = pd.DataFrame(dt_transform.loc[:, self.paid_media_spends[i]])
+                    dt_spendModInput['reach'] = dt_transform.loc[:, self.paid_media_vars[i]]
                     dt_spendModInput.loc[
-                        dt_spendModInput[self.mediaSpendName[i]] == 0, self._mediaSpendName[i]] = 0.01
+                        dt_spendModInput[self.paid_media_spends[i]] == 0, self.paid_media_spends[i]] = 0.01
                     dt_spendModInput.loc[dt_spendModInput['reach'] == 0, 'reach'] = \
-                        dt_spendModInput[dt_spendModInput['reach'] == 0][self.mediaSpendName[i]] / \
+                        dt_spendModInput[dt_spendModInput['reach'] == 0][self.paid_media_spends[i]] / \
                         mediaCostFactor['mediaCostFactor'][i]
 
                     # Michaelis-Menten model
                     # vmax = max(dt_spendModInput['reach'])/2
                     # km = max(dt_spendModInput['reach'])
                     # y = michaelis_menten(dt_spendModInput[d['set_mediaSpendName'][i]], vmax, km)
-                    popt, pcov = curve_fit(self.michaelis_menten, dt_spendModInput[self.mediaSpendName[i]],
+                    try:
+                        popt, pcov = curve_fit(self.michaelis_menten, dt_spendModInput[self.paid_media_spends[i]],
                                            dt_spendModInput['reach'])
 
-                    yhatNLS = self.michaelis_menten(dt_spendModInput[self.mediaSpendName[i]], *popt)
+                        yhatNLS = self.michaelis_menten(dt_spendModInput[self.paid_media_spends[i]], *popt)
+                    except ValueError:
+                        print('michaelis menten fitting for' + str(self.paid_media_vars[i]) + ' out of range. using lm instead')
+                        popt = None
+                        pcov = None
+                        yhatNLS = None
                     # nls_pred = yhatNLS.predict(np.array(dt_spendModInput[d['set_mediaSpendName'][i]]).reshape(-1, 1))
 
                     # linear model
-                    lm = LinearRegression().fit(np.array(dt_spendModInput[self.mediaSpendName[i]])
+                    lm = LinearRegression().fit(np.array(dt_spendModInput[self.paid_media_spends[i]])
                                                 .reshape(-1, 1), np.array(dt_spendModInput['reach']).reshape(-1, 1))
-                    lm_pred = lm.predict(np.array(dt_spendModInput[self.mediaSpendName[i]]).reshape(-1, 1))
+                    lm_pred = lm.predict(np.array(dt_spendModInput[self.paid_media_spends[i]]).reshape(-1, 1))
 
                     # compare NLS & LM, takes LM if NLS fits worse
                     rsq_nls = r2_score(dt_spendModInput['reach'], yhatNLS)
                     rsq_lm = r2_score(dt_spendModInput['reach'], lm_pred)
                     costSelector[i] = rsq_nls > rsq_lm
 
-                    modNLSCollect[self.mediaSpendName[i]] = {'vmax': popt[0], 'km': popt[1], 'rsq_lm': rsq_lm,
+                    modNLSCollect[self.paid_media_spends[i]] = {'vmax': popt[0], 'km': popt[1], 'rsq_lm': rsq_lm,
                                                              'rsq_nls': rsq_nls, 'coef_lm': lm.coef_}
 
                     yhat_dt = pd.DataFrame(dt_spendModInput['reach']).rename(columns={'reach': 'y'})
-                    yhat_dt['channel'] = self.mediaVarName[i]
-                    yhat_dt['x'] = dt_spendModInput[self.mediaSpendName[i]]
+                    yhat_dt['channel'] = self.paid_media_vars[i]
+                    yhat_dt['x'] = dt_spendModInput[self.paid_media_spends[i]]
                     yhat_dt['yhat'] = yhatNLS if costSelector[i] else lm_pred
                     yhat_dt['models'] = 'nls' if costSelector[i] else 'lm'
                     yhatCollect.append(yhat_dt)
@@ -286,7 +297,7 @@ class Robyn(object):
         self.modNLSCollect = modNLSCollect
         # d['yhatNLSCollect'] = yhatNLSCollect
 
-        getSpendSum = pd.DataFrame(dt_transform[self.mediaSpendName].sum(axis=0), columns=['total_spend']).T
+        getSpendSum = pd.DataFrame(dt_transform[self.paid_media_spends].sum(axis=0), columns=['total_spend']).T
 
         self.mediaCostFactor = mediaCostFactor
         self.costSelector = costSelector
@@ -294,7 +305,7 @@ class Robyn(object):
 
         ################################################################
         #### clean & aggregate data
-        all_name = [['ds'], ['depVar'], self.prophet, self.baseVarName, self.mediaVarName]
+        all_name = [['ds'], ['depVar'], self.prophet_vars, self.context_vars, self.paid_media_vars]
         all_name = set([item for sublist in all_name for item in sublist])
         # all_mod_name = [['ds'], ['depVar'], d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
         # all_mod_name = [item for sublist in all_mod_name for item in sublist]
@@ -315,24 +326,24 @@ class Robyn(object):
         ################################################################
         #### Obtain prophet trend, seasonality and changepoints
 
-        if self.activate_prophet:
-            if len(self.prophet) != len(self.prophet):
-                raise ValueError('set_prophet and set_prophetVarSign have to be the same length')
-            if len(self.prophet) == 0 or len(self.prophetVarSign) == 0:
+        if self.prophet_vars:
+            if len(self.prophet_vars) != len(self.prophet_signs):
+                raise ValueError('prophet_vars and prophet_signs have to be the same length')
+            if len(self.prophet_vars) == 0 or len(self.prophet_signs) == 0:
                 raise ValueError('if activate_prophet == TRUE, set_prophet and set_prophetVarSign must to specified')
-            if self.country not in self.df_holidays['country'].values:
+            if self.prophet_country not in self.df_holidays['country'].values:
                 raise ValueError(
                     'set_country must be already included in the holidays.csv and as ISO 3166-1 alpha-2 abbreviation')
 
             recurrence = dt_transform.copy().rename(columns={'depVar': 'y'})
-            use_trend = True if 'trend' in self.prophet else False
-            use_season = True if 'season' in self.prophet else False
-            use_weekday = True if 'weekday' in self.prophet else False
-            use_holiday = True if 'holiday' in self.prophet else False
+            use_trend = True if 'trend' in self.prophet_vars else False
+            use_season = True if 'season' in self.prophet_vars else False
+            use_weekday = True if 'weekday' in self.prophet_vars else False
+            use_holiday = True if 'holiday' in self.prophet_vars else False
 
-            if intervalType == 'day':
+            if self.intervalType == 'day':
                 holidays = self.df_holidays
-            elif intervalType == 'week':
+            elif self.intervalType == 'week':
                 weekStartInput = dt_transform['ds'][0].weekday()
                 if weekStartInput == 0:
                     weekStartMonday = True
@@ -347,7 +358,7 @@ class Robyn(object):
                 holidays = self.df_holidays.groupby(['ds', 'country', 'year'])['holiday'].apply(
                     lambda x: '#'.join(x)).reset_index()
 
-            elif intervalType == 'month':
+            elif self.intervalType == 'month':
                 monthStartInput = dt_transform['ds'][0].strftime("%d")
                 if monthStartInput != '01':
                     raise ValueError("monthly data should have first day of month as datestampe, e.g.'2020-01-01'")
@@ -385,8 +396,6 @@ class Robyn(object):
 
         ################################################################
         #### Finalize input
-
-        self.check_conditions(dt_transform)
 
         return dt_transform
 
