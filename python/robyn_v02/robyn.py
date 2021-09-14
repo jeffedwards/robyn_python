@@ -623,25 +623,20 @@ class Robyn(object):
         lambda_seq = np.exp(log_seq)
         return lambda_seq
 
-    def decomp(self, coefs, dt_mod, dt_modAdstocked, x, y_pred, i):
+    def model_decomp(self, coefs, dt_mod_saturated, x, y_pred, i, dt_mod_rollwind, refresh_added_start):
+
         """
-            ----------
-            Parameters
-            ----------
-            coef: Pandas Series with index name
-            dt_modAdstocked: Pandas Dataframe
-            x: Pandas Dataframe
-            y_pred: Pandas Series
-            i: interger
-            d: master dictionary
-            Returns
-            -------
-            decompCollect
-            """
+        :param coef: Pandas Series with index name
+        :param dt_modAdstocked: Pandas Dataframe
+        :param x: Pandas Dataframe
+        :param y_pred: Pandas Series
+        :param i: interger
+        :return: Collection of decomposition output
+        """
 
         ## input for decomp
-        y = dt_modAdstocked["depVar"]
-        indepVar = dt_modAdstocked.loc[:, dt_modAdstocked.columns != 'depVar']
+        y = dt_mod_saturated["depVar"]
+        indepVar = dt_mod_saturated.loc[:, dt_mod_saturated.columns != 'depVar']
         intercept = coefs.iloc[0]
         indepVarName = indepVar.columns.tolist()
         indepVarCat = indepVar.select_dtypes(['category']).columns.tolist()
@@ -649,7 +644,8 @@ class Robyn(object):
         ## decomp x
         xDecomp = x * coefs.iloc[1:]
         xDecomp.insert(loc=0, column='intercept', value=[intercept] * len(x))
-        xDecompOut = pd.concat([dt_mod['ds'], xDecomp], axis=1)
+        xDecompOut = pd.concat([pd.DataFrame({'ds': dt_mod_rollwind["ds"], 'y': y, 'y_pred': y_pred}),
+                                xDecomp], axis=1)
 
         ## QA decomp
         y_hat = xDecomp.sum(axis=1)
@@ -668,10 +664,21 @@ class Robyn(object):
 
         xDecompOutAgg = xDecompOut[['intercept'] + indepVarName].sum(axis=0)
         xDecompOutAggPerc = xDecompOutAgg / sum(y_hat)
-        xDecompOutAggMeanNon0 = xDecompOut.mean(axis=0).clip(lower=0)
+        xDecompOutAggMeanNon0 = xDecompOut[['intercept'] + indepVarName].mean(axis=0).clip(lower=0)
         xDecompOutAggMeanNon0Perc = xDecompOutAggMeanNon0 / sum(xDecompOutAggMeanNon0)
 
+        refreshAddedStartWhich = xDecompOut["ds"][xDecompOut["ds"] == refresh_added_start].index[0]
+        refreshAddedEnd = xDecompOut["ds"].iloc[-1]
+        refreshAddedEndWhich = xDecompOut["ds"][xDecompOut["ds"] == refreshAddedEnd].index[0]
+
+        xDecompOutAggRF = xDecompOut[refreshAddedStartWhich:refreshAddedEndWhich][['intercept'] + indepVarName].sum(axis=0)
+        y_hatRF = y_hat[refreshAddedStartWhich:refreshAddedEndWhich]
+        xDecompOutAggPercRF = xDecompOutAggRF / sum(y_hatRF)
+        xDecompOutAggMeanNon0RF = xDecompOut[refreshAddedStartWhich:refreshAddedEndWhich][['intercept'] + indepVarName].mean(axis=0).clip(lower=0)
+        xDecompOutAggMeanNon0PercRF = xDecompOutAggMeanNon0RF / sum(xDecompOutAggMeanNon0RF)
+
         coefsOut = coefs.reset_index(inplace=False)
+        coefsOutCat = coefsOut.copy()
         coefsOut = coefsOut.rename(columns={'index': 'rn'})
         if len(indepVarCat) == 0:
             pass
@@ -683,14 +690,20 @@ class Robyn(object):
         frame = {'xDecompAgg': xDecompOutAgg,
                  'xDecompPerc': xDecompOutAggPerc,
                  'xDecompMeanNon0': xDecompOutAggMeanNon0,
-                 'xDecompMeanNon0Perc': xDecompOutAggMeanNon0Perc}
+                 'xDecompMeanNon0Perc': xDecompOutAggMeanNon0Perc,
+                 'xDecompAggRF': xDecompOutAggRF,
+                 'xDecompPercRF': xDecompOutAggPercRF,
+                 'xDecompMeanNon0RF': xDecompOutAggMeanNon0RF,
+                 'xDecompMeanNon0PercRF': xDecompOutAggMeanNon0PercRF
+                 }
         frame.index = coefsOut.index
         decompOutAgg = pd.merge(coefsOut, frame, left_index=True, right_index=True)
         decompOutAgg['pos'] = decompOutAgg['xDecompAgg'] >= 0
 
         decompCollect = {'xDecompVec': xDecompOut,
                          'xDecompVec_scaled': xDecompOut_scaled,
-                         'xDecompAgg': decompOutAgg}
+                         'xDecompAgg': decompOutAgg,
+                         'coefsOutCat': coefsOutCat}
 
         return decompCollect
 
@@ -948,7 +961,7 @@ class Robyn(object):
             mod_out = self.refit(x_train, y_train, lambda_=cvmod[0][i], lower_limits, upper_limits)
             lambda_ = cvmod[0][i]
 
-        decomp_collect = self.decomp(coefs=mod_out['coefs'], dt_train, x_train, y_pred=mod_out['y_pred'], i)
+        decomp_collect = self.model_decomp(coefs=mod_out['coefs'], dt_train, x_train, y_pred=mod_out['y_pred'], i)
         nrmse = mod_out['nrmse_train']
         mape = 0
 
