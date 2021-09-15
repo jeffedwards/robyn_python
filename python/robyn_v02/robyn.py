@@ -716,6 +716,62 @@ class Robyn(object):
 
         return decompCollect
 
+    ########################
+    # TODO calibrateLift -> calibrate_mmm
+
+    # def calibrate_mmm(xDecompOut, xDecompOut.scaled, decompOutAgg, set_lift):
+    #     """
+    #
+    #     :param xDecompOut:
+    #     :param xDecompOut.scaled:
+    #     :param decompOutAgg:
+    #     :param set_lift:
+    #     :return:
+    #     """
+    #
+    #     lift_channels = list(set_lift.channel)
+    #     check_set_lift = all(item in set_mediaVarName for item in lift_channels)
+    #     if check_set_lift:
+    #         getLiftMedia = list(set(lift_channels))
+    #         getDecompVec = xDecompOut
+    #     else:
+    #         exit("set_lift channels must have media variable")
+    #
+    #     # loop all lift input
+    #     liftCollect = pd.DataFrame(columns = ['liftMedia', 'liftStart', 'liftEnd' ,
+    #                                           'liftAbs', 'decompAbsScaled', 'dependent'])
+    #     for m in getLiftMedia: # loop per lift channel
+    #         liftWhich = list(set_lift.loc[set_lift.channel.isin([m])].index)
+    #         liftCollect2 = pd.DataFrame(columns = ['liftMedia', 'liftStart', 'liftEnd' ,
+    #                                                'liftAbs', 'decompAbsScaled', 'dependent'])
+    #         for lw in liftWhich: # loop per lift test per channel
+    #             # get lift period subset
+    #             liftStart = set_lift['liftStartDate'].iloc[lw]
+    #             liftEnd = set_lift['liftEndDate'].iloc[lw]
+    #             liftAbs = set_lift['liftAbs'].iloc[lw]
+    #             liftPeriodVec = getDecompVec[['ds', m]][(getDecompVec.ds >= liftStart) & (getDecompVec.ds <= liftEnd)]
+    #             liftPeriodVecDependent = getDecompVec[['ds', 'y']][(getDecompVec.ds >= liftStart) & (getDecompVec.ds <= liftEnd)]
+    #
+    #             # scale decomp
+    #             mmmDays = len(liftPeriodVec)*7
+    #             liftDays = abs((liftEnd - liftStart).days) + 1
+    #             y_hatLift = getDecompVec['y_hat'].sum() # total predicted sales
+    #             x_decompLift = liftPeriodVec.iloc[:1].sum()
+    #             x_decompLiftScaled = x_decompLift / mmmDays * liftDays
+    #             y_scaledLift = liftPeriodVecDependent['y'].sum() / mmmDays * liftDays
+    #
+    #             # output
+    #             list_to_append = [[getLiftMedia[m], liftStart, liftEnd, liftAbs, x_decompLiftScaled, y_scaledLift]]
+    #             liftCollect2 = liftCollect2.append(pd.DataFrame(list_to_append,
+    #                                                             columns = ['liftMedia', 'liftStart', 'liftEnd' ,
+    #                                                                        'liftAbs', 'decompAbsScaled', 'dependent'],
+    #                                                             ignore_index = True))
+    #         liftCollect = liftCollect.append(liftCollect2, ignore_index = True)
+    #     #get mape_lift
+    #     liftCollect['mape_lift'] = abs((liftCollect['decompAbsScaled'] - liftCollect['liftAbs']) / liftCollect['liftAbs'])
+    #
+    #     return liftCollect
+
     def refit(self, x_train, y_train, lambda_: int, lower_limits: list, upper_limits: list):
 
         # Call R functions - to match outputs of Robyn in R
