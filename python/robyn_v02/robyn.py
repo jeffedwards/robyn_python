@@ -225,6 +225,7 @@ class Robyn(object):
                 raise ValueError('factor_vars must be from context_vars or organic_vars')
 
         ## check all vars
+        all_media = self.paid_media_vars + self.organic_vars
         all_ind_vars = self.paid_media_vars + self.organic_vars + self.prophet_vars + self.context_vars
         if len(all_ind_vars) < len(set(all_ind_vars)):
             raise ValueError('Input variables must have unique names')
@@ -236,49 +237,94 @@ class Robyn(object):
                              'data points. We recommend row:column ratio >= 10:1')
 
         ## check window_start & window_end
+        try:
+            self.window_start = min(pd.to_datetime(dt_transform[self.date_var], format='%Y-%m-%d', errors='raise'))
+        except ValueError:
+            print('input date variable should have format "yyyy-mm-dd"')
+
         if not self.window_start:
             self.window_start = min(dt_transform[self.date_var])
+        elif self.window_start < min(dt_transform[self.date_var]):
+            self.window_start = min(dt_transform[self.date_var])
+            raise ValueError('window_start is smaller than the earliest date in input data. It\'s set to the earliest date')
+        elif self.window_start > max(dt_transform[self.date_var]):
+            self.window_start = min(dt_transform[self.date_var])
+            raise ValueError('window_start can\'t be larger than the the latest date in input data')
+
+        self.rollingWindowStartWhich = abs(pd.to_datetime(dt_transform[self.date_var] - pd.to_datetime(self.window_start))).idxmin()
+        if self.window_start not in dt_transform[self.date_var]:
+            self.window_start = dt_transform[self.date_var][self.rollingWindowStartWhich]
+            print('window_start is adapted to the closest date contained in input data')
+
+        self.refreshAddedStart = self.window_start
+
+        try:
+            self.window_end = max(pd.to_datetime(dt_transform[self.date_var], format='%Y-%m-%d', errors='raise'))
+        except ValueError:
+            print('input date variable should have format "yyyy-mm-dd"')
+
+        if not self.window_end:
+            self.window_end = max(dt_transform[self.date_var])
+        elif self.window_end > max(dt_transform[self.date_var]):
+            self.window_end = max(dt_transform[self.date_var])
+            raise ValueError('window_end is larger than the latest date in input data. It\'s set to the latest date')
+        elif self.window_end < self.window_start:
+            self.window_end = max(dt_transform[self.date_var])
+            raise ValueError('window_end must be >= window_start. It\'s set to latest date in input data')
+
+        self.rollingWindowEndWhich = abs(
+            pd.to_datetime(dt_transform[self.date_var] - pd.to_datetime(self.window_end))).idxmin()
+        if self.window_end not in dt_transform[self.date_var]:
+            self.window_end = dt_transform[self.date_var][self.rollingWindowEndWhich]
+            print('window_end is adapted to the closest date contained in input data')
+
+        self.rollingWindowLength = self.rollingWindowEndWhich - self.rollingWindowStartWhich + 1
+
+        dt_init = dt_transform.iloc[self.rollingWindowStartWhich:self.rollingWindowEndWhich+1,].loc[:, all_media]
+        if not (dt_init != 0).any(axis=0).all(axis=0):
+            raise ValueError('Some media channels contain only 0 within training period')
 
         ## check adstock
         if self.adstock not in ['geometric', 'weibull']:
             raise ValueError('adstock must be "geometric" or "weibull"')
 
         ## get all hypernames
+
         global_name = ["thetas", "shapes", "scales", "alphas", "gammas", "lambdas"]
         if self.adstock == 'geometric':
-            pass
+            local_name = sorted(list([i+"_"+str(j) for i in ['thetas','alphas','gamma'] for j in global_name]))
         elif self.adstock == 'weibull':
-            pass
+            local_name = sorted(list([i+"_"+str(j) for i in ['shapes','scales','alphas','gamma'] for j in global_name]))
 
         ## check hyperparameter names in hyperparameters
 
         ## output condition check
         # when hyperparameters is not provided
-        if self.hyperparameters:
+        if not self.hyperparameters:
             raise ValueError("\nhyperparameters is not provided yet. run Robyn(...hyperparameter = ...) to add it\n")
         # when hyperparameters is provided wrongly
         elif set(self.exposureVarName) != set(self.local_name):
-            raise ValueError()
+            raise ValueError('hyperparameters must be a list and contain vectors or values' )
         else:
             # check calibration
-            if a:
-                pass
-            elif self.iterations < 2000 or self.trials < 10:
-                raise ValueError('you are calibrating MMM. we recommend to run at least 2000 iterations per trial and '
+            if self.calibration_input:
+                if (min(self.calibration_input['liftStartDate']) < min(dt_transform[self.date_var])
+                    or max(self.calibration_input['liftStartDate']) > max(dt_transform[self.date_var])):
+                    raise ValueError('we recommend you to only use experimental results conducted within your MMM input'
+                                     'data date range')
+
+                elif self.iterations < 2000 or self.trials < 10:
+                    raise ValueError('you are calibrating MMM. we recommend to run at least 2000 iterations per trial and '
                                  'at least 10 trials at the beginning')
-            elif self.iterations < 2000 or self.trials < 5:
-                raise ValueError('we recommend to run at least 2000 iterations per trial and at least 5 trials at the beginning')
-            print('\nAll input in robyn_inputs() correct. Ready to run robyn_run(...)')
+                elif self.iterations < 2000 or self.trials < 5:
+                    raise ValueError('we recommend to run at least 2000 iterations per trial and at least 5 trials at the beginning')
 
-            #when all provided once correctly
-            dt_new = self.robyn_engineering(dt_transform)
+                #when all provided once correctly
+                print('\nAll input in robyn_inputs() correct. Ready to run robyn_run(...)')
+                #dt_new = self.robyn_engineering(dt_transform)
 
-        if not self.hyperparameters:
-            raise ValueError("\nhyperparameters is not provided yet. run robyn_inputs(InputCollect = InputCollect, "
-                             "hyperparameter = ...) to add it\n")
-        else:
-            # check calibration
-
+            elif not self.hyperparameters:
+                raise ValueError("hyperparameters is not provided yet")
 
         # if self.activate_prophet and not set(self.prophet).issubset({'trend', 'season', 'weekday', 'holiday'}):
         #     raise ValueError('set_prophet must be "trend", "season", "weekday" or "holiday"')
