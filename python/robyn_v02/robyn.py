@@ -37,45 +37,6 @@ class Robyn(object):
 
     def __init__(self, country, dateVarName, depVarName, mediaVarName, dt_input):
 
-        # todo comprehensive documentation on each variable
-
-        # self.country = country
-        # self.dateVarName = dateVarName
-        # self.depVarName = depVarName
-        # self.activate_prophet = True
-        # self.prophet = ["trend", "season", "holiday"]
-        # self.prophetVarSign = ["default", "default", "default"]
-        # self.activate_baseline = True
-        # self.baseVarName = ['competitor_sales_B']
-        # self.baseVarSign = ['negative']
-        # self.mediaVarName = mediaVarName
-        # self.mediaSpendName = ["tv_S", "ooh_S",	"print_S", "facebook_S", "search_S"]
-        # self.mediaVarSign = ["positive", "positive", "positive", "positive", "positive"]
-        # self.factorVarName = []
-        # self.cores = 6
-        # self.adstock_type = 'geometric'
-        # self.iter = 500
-        # self.hyperOptimAlgo = 'DiscreteOnePlusOne'
-        # self.trial = 40
-        # self.dayInterval = 7
-        # self.activate_calibration = False
-        # self.lift = pd.DataFrame()
-        # self.hyperBounds = {}
-        # self.df_holidays = pd.read_csv('source/holidays.csv')
-        #
-        # self.plotNLSCollect = None
-        # self.modNLSCollect = None
-        # # self.hatNLSCollect = None
-        # self.mediaCostFactor = None
-        # self.costSelector = None
-        # self.getSpendSum = None
-        # self.modelRecurrance = None
-        # self.forecastRecurrance = None
-        #
-        # self.fixed_hyppar_dt = None
-
-
-
         # R 2.1
         self.dt_input = dt_input
         self.dt_holidays = pd.read_csv('source/holidays.csv')
@@ -114,16 +75,16 @@ class Robyn(object):
         self.mediaVarCount = None
         self.exposureVarName = None
         self.local_name = None
-        #self.InputCollect = None
+        self.all_media = None
 
-        self.check_conditions(self,dt_input)
+        self.check_conditions(dt_input)
 
     def check_conditions(self, dt_transform):
         """
-            check all conditions 1 by 1; terminate and raise errors if conditions are not met
-            :param dt_transformations:
-            :return: dict
-            """
+
+        :param dt_transform:
+        :return:
+        """
         ## check date input
         inputLen = dt_transform['date_var'].shape[0]
         inputLenUnique = dt_transform['date_var'].unique()
@@ -226,6 +187,7 @@ class Robyn(object):
 
         ## check all vars
         all_media = self.paid_media_vars + self.organic_vars
+        self.all_media = all_media
         all_ind_vars = self.paid_media_vars + self.organic_vars + self.prophet_vars + self.context_vars
         if len(all_ind_vars) < len(set(all_ind_vars)):
             raise ValueError('Input variables must have unique names')
@@ -506,23 +468,19 @@ class Robyn(object):
 
         ################################################################
         #### clean & aggregate data
-        all_name = [['ds'], ['depVar'], self.prophet_vars, self.context_vars, self.paid_media_vars]
-        all_name = set([item for sublist in all_name for item in sublist])
-        # all_mod_name = [['ds'], ['depVar'], d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
-        # all_mod_name = [item for sublist in all_mod_name for item in sublist]
-        if len(all_name) != len(set(all_name)):
-            raise ValueError('Input variables must have unique names')
+        # all_name = [['ds'], ['depVar'], self.prophet_vars, self.context_vars, self.paid_media_vars]
+        # all_name = set([item for sublist in all_name for item in sublist])
+        # # all_mod_name = [['ds'], ['depVar'], d['set_prophet'], d['set_baseVarName'], d['set_mediaVarName']]
+        # # all_mod_name = [item for sublist in all_mod_name for item in sublist]
+        # if len(all_name) != len(set(all_name)):
+        #     raise ValueError('Input variables must have unique names')
 
         ## transform all factor variables
-        try:
-            self.factorVarName
-        except:
-            pass
-        finally:
-            if len(self.factorVarName) > 0:
-                dt_transform[self.factorVarName].apply(lambda x: x.astype('category'))
+        if self.factor_vars:
+            if len(self.factor_vars) > 0:
+                dt_transform[self.factor_vars].apply(lambda x: x.astype('category'))
             else:
-                self.factorVarName = None
+                self.factor_vars = None
 
         ################################################################
         #### Obtain prophet trend, seasonality and changepoints
@@ -597,8 +555,19 @@ class Robyn(object):
 
         ################################################################
         #### Finalize input
+        # dt_transform < - dt_transform[, c("ds", "dep_var", all_ind_vars),
+        #with = FALSE]
 
-        return dt_transform
+        self.dt_mod = dt_transform
+        self.dt_modRollWind = dt_transform[self.rollingWindowStartWhich:self.rollingWindowEndWhich+1]
+        self.dt_inputRollWind = dt_inputRollWind
+        self.modNLSCollect = modNLSCollect
+        self.plotNLSCollect = plotNLSCollect
+        self.yhatNLSCollect = yhatNLSCollect
+        self.costSelector = costSelector
+        self.mediaCostFactor = mediaCostFactor
+
+        return None
 
 
 
