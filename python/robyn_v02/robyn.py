@@ -1058,35 +1058,38 @@ class Robyn(object):
         ################################################
         ### Setup environment
 
-        # Get environment for parallel backend
-        dt_mod = df
-        mediaVarName = self.mediaVarName
-        adstock_type = self.adstock_type
-        # set_modTrainSize = set_modTrainSize
-        activate_calibration = self.activate_calibration
-        baseVarSign = self.baseVarSign
-        mediaVarSign = self.mediaVarSign
-        activate_prophet = self.activate_prophet
-        prophetVarSign = self.prophetVarSign
-        factorVarName = self.factorVarName
-        lift = self.lift
+        try:
+            self.dt_mod
+        except NameError:
+            print("robyn_engineering() first to get the dt_mod")
 
-        import nevergrad as ng
+        ## get environment for parallel backend
+        dt_input = self.dt_input
+        dt_mod = self.dt_mod.copy()
+        xDecompAggPrev = self.xDecompAggPrev
+        rollingWindowStartWhich = self.rollingWindowStartWhich
+        rollingWindowEndWhich = self.rollingWindowEndWhich
+        refreshAddedStart = self.refreshAddedStart
+        dt_modRollWind = self.dt_modRollWind
+        refresh_steps = self.refresh_steps
+        rollingWindowLength = self.rollingWindowLength
 
-        # available optimizers in ng
-        # optimizer_name <- "DoubleFastGADiscreteOnePlusOne"
-        # optimizer_name <- "OnePlusOne"
-        # optimizer_name <- "DE"
-        # optimizer_name <- "RandomSearch"
-        # optimizer_name <- "TwoPointsDE"
-        # optimizer_name <- "Powell"
-        # optimizer_name <- "MetaModel"  CRASH !!!!
-        # optimizer_name <- "SQP"
-        # optimizer_name <- "Cobyla"
-        # optimizer_name <- "NaiveTBPSA"
-        # optimizer_name <- "DiscreteOnePlusOne"
-        # optimizer_name <- "cGA"
-        # optimizer_name <- "ScrHammersleySearch"
+        paid_media_vars = self.paid_media_vars
+        paid_media_spends = self.paid_media_spends
+        organic_vars = self.organic_vars
+        context_vars = self.context_vars
+        prophet_vars = self.prophet_vars
+        adstock = self.adstock
+        context_signs = self.context_signs
+        paid_media_signs = self.paid_media_signs
+        prophet_signs = self.prophet_signs
+        organic_signs = self.organic_signs
+        all_media = self.all_media
+        #factor_vars = self.factor_vars
+        calibration_input = self.calibration_input
+        nevergrad_algo = self.nevergrad_algo
+        cores = self.cores
+
 
         ################################################
         # Start Nevergrad loop
@@ -1188,10 +1191,11 @@ class Robyn(object):
             mod_out = self.refit(x_train, y_train, lambda_=cvmod[0][i], lower_limits, upper_limits)
             lambda_ = cvmod[0][i]
 
-        decomp_collect = self.model_decomp(coefs=mod_out['coefs'], dt_train, x_train, y_pred=mod_out['y_pred'], i)
+        decomp_collect = self.model_decomp(coefs=mod_out['coefs'], dt_modSaturated = dt_modSaturated, x = x_train, y_pred = mod_out['y_pred'], i=i, dt_mod_rollwind = dt_modRollWind, refresh_added_start= refreshAddedStart)
+
         nrmse = mod_out['nrmse_train']
         mape = 0
-
+        df_int = mod_out['df_int']
 
         #####################################
         # Get calibration mape
