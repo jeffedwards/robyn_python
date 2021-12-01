@@ -1240,7 +1240,7 @@ class Robyn(object):
 
         #####################################
         # Collect output
-        resultHypParam = pd.DataFrame() #!! can't understand how to translate this : resultHypParam <- data.table()[, (hypParamSamName):= lapply(hypParamSam[1:length(hypParamSamName)], function(x) x)]
+        resultHypParam = pd.DataFrame(index=range(hypParamSamName.shape[0]),columns=range(hypParamSamName.shape[1])) #!! not sure I undertand how to translate this : resultHypParam <- data.table()[, (hypParamSamName):= lapply(hypParamSam[1:length(hypParamSamName)], function(x) x)]
         resultHypParam['mape'] = mape
         resultHypParam['nrmse'] = nrmse
         resultHypParam['decomp_rssd'] = decomp_rssd
